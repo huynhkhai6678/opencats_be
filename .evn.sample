@@ -1,0 +1,9 @@
+APP_NAME="DTALENTS"
+PORT="4000"
+API_URL="http://localhost:4000"
+WEB_URL="http://localhost:4200"
+
+DATABASE_URL="mysql://root:password@localhost:3306/mydb"
+
+JWT_SECRET=7d3b8f3ca0c18a1ab51f1923a9a9a0d478bb224351aef78afcf6810eecafd73d4238b3dc7202a134d9c5e41e75d4d7380bc583119ccc0b5329451cc315b37a09
+JWT_EXPIRES_IN=1d

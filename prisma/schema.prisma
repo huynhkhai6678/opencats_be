@@ -1,0 +1,956 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model access_level {
+  access_level_id   Int    @id @default(0)
+  short_description String @default("") @db.VarChar(32)
+  long_description  String @db.Text
+
+  @@index([short_description], map: "IDX_access_level")
+}
+
+model activity {
+  activity_id    Int      @id @default(autoincrement())
+  data_item_id   Int      @default(0)
+  data_item_type Int      @default(0)
+  joborder_id    Int?
+  site_id        Int      @default(0)
+  entered_by     Int      @default(0)
+  date_created   DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  type           Int      @default(0)
+  notes          String?  @db.Text
+  date_modified  DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  home_display   Int      @default(1)
+
+  @@index([site_id, data_item_type, date_created, entered_by, joborder_id], map: "IDX_activity_site_type_created_job")
+  @@index([site_id, data_item_id, data_item_type], map: "IDX_data_item_id_type_site")
+  @@index([data_item_type], map: "IDX_data_item_type")
+  @@index([date_created], map: "IDX_date_created")
+  @@index([date_modified], map: "IDX_date_modified")
+  @@index([entered_by], map: "IDX_entered_by")
+  @@index([joborder_id], map: "IDX_joborder_id")
+  @@index([site_id, date_created], map: "IDX_site_created")
+  @@index([site_id], map: "IDX_site_id")
+  @@index([type], map: "IDX_type")
+  @@index([data_item_type, data_item_id], map: "IDX_type_id")
+}
+
+model activity_type {
+  activity_type_id  Int    @id @default(0)
+  short_description String @default("") @db.VarChar(32)
+
+  @@index([short_description], map: "IDX_activity_type1")
+}
+
+model attachment {
+  attachment_id     Int      @id @default(autoincrement())
+  data_item_id      Int      @default(0)
+  data_item_type    Int      @default(0)
+  site_id           Int      @default(0)
+  title             String?  @db.VarChar(128)
+  original_filename String   @default("") @db.VarChar(255)
+  stored_filename   String   @default("") @db.VarChar(255)
+  content_type      String?  @db.VarChar(255)
+  resume            Int      @default(0)
+  text              String?  @db.Text
+  date_created      DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  date_modified     DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  profile_image     Int?     @default(0)
+  directory_name    String?  @db.VarChar(64)
+  md5_sum           String   @default("") @db.VarChar(40)
+  file_size_kb      Int?     @default(0)
+  md5_sum_text      String   @default("") @db.VarChar(40)
+
+  @@index([md5_sum], map: "IDX_CANDIDATE_MD5_SUM")
+  @@index([data_item_id], map: "IDX_data_item_id")
+  @@index([site_id, file_size_kb], map: "IDX_site_file_size")
+  @@index([site_id, file_size_kb, date_created], map: "IDX_site_file_size_created")
+  @@index([data_item_type, data_item_id], map: "IDX_type_id")
+}
+
+model calendar_event {
+  calendar_event_id Int      @id @default(autoincrement())
+  type              Int      @default(0)
+  date              DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  title             String   @db.Text
+  all_day           Int      @default(0)
+  data_item_id      Int      @default(-1)
+  data_item_type    Int      @default(-1)
+  entered_by        Int      @default(0)
+  date_created      DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  date_modified     DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  site_id           Int      @default(0)
+  joborder_id       Int      @default(-1)
+  description       String?  @db.Text
+  duration          Int      @default(60)
+  reminder_enabled  Int      @default(0)
+  reminder_email    String?  @db.Text
+  reminder_time     Int?     @default(0)
+  public            Int      @default(1)
+
+  @@index([site_id, data_item_type, data_item_id], map: "IDX_site_data_item_type_id")
+  @@index([site_id, date], map: "IDX_site_id_date")
+}
+
+model calendar_event_type {
+  calendar_event_type_id Int    @id @default(0)
+  short_description      String @default("") @db.VarChar(32)
+  icon_image             String @default("") @db.VarChar(128)
+
+  @@index([short_description], map: "IDX_short_description")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model candidate {
+  candidate_id          Int      @id @default(autoincrement())
+  site_id               Int      @default(0)
+  last_name             String   @default("") @db.VarChar(64)
+  first_name            String   @default("") @db.VarChar(64)
+  middle_name           String?  @db.VarChar(32)
+  phone_home            String?  @db.VarChar(40)
+  phone_cell            String?  @db.VarChar(40)
+  phone_work            String?  @db.VarChar(40)
+  address               String?  @db.Text
+  city                  String?  @db.VarChar(64)
+  state                 String?  @db.VarChar(64)
+  zip                   String?  @db.VarChar(16)
+  source                String?  @db.VarChar(128)
+  date_available        String?  @db.Text
+  can_relocate          Int      @default(0)
+  notes                 String?  @db.Text
+  key_skills            String?  @db.Text
+  current_employer      String?  @db.VarChar(128)
+  entered_by            Int      @default(0)
+  owner                 Int?
+  date_created          DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  date_modified         DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  email1                String?  @db.VarChar(128)
+  email2                String?  @db.VarChar(128)
+  web_site              String?  @db.VarChar(128)
+  import_id             Int      @default(0)
+  is_hot                Int      @default(0)
+  eeo_ethnic_type_id    Int?     @default(0)
+  eeo_veteran_type_id   Int?     @default(0)
+  eeo_disability_status String?  @default("") @db.VarChar(5)
+  eeo_gender            String?  @default("") @db.VarChar(5)
+  desired_pay           String?  @db.VarChar(64)
+  current_pay           String?  @db.VarChar(64)
+  is_active             Int?     @default(1)
+  is_admin_hidden       Int?     @default(0)
+  best_time_to_call     String   @default("") @db.VarChar(255)
+  full_name             String   @db.VarChar(255)
+  job_title             String   @db.VarChar(255)
+  exp_years             Int      @default(1)
+  desired_pay_1         Float    @default(0.00) @db.Float
+  desired_work_location String?  @db.VarChar(255)
+  source_type           Boolean  @default(false)
+  owner_delete          Boolean  @default(false)
+  internal_comment      String?  @db.Text
+  language              String?  @db.VarChar(255)
+
+  @@index([date_created], map: "IDX_date_created")
+  @@index([date_modified], map: "IDX_date_modified")
+  @@index([entered_by], map: "IDX_entered_by")
+  @@index([first_name], map: "IDX_first_name")
+  @@index([key_skills(length: 255)], map: "IDX_key_skills")
+  @@index([last_name], map: "IDX_last_name")
+  @@index([owner], map: "IDX_owner")
+  @@index([phone_cell], map: "IDX_phone_cell")
+  @@index([phone_home], map: "IDX_phone_home")
+  @@index([phone_work], map: "IDX_phone_work")
+  @@index([site_id, first_name, last_name, date_modified], map: "IDX_site_first_last_modified")
+  @@index([site_id, email1(length: 8), email2(length: 8)], map: "IDX_site_id_email_1_2")
+}
+
+model candidate_joborder {
+  candidate_joborder_id    Int       @id @default(autoincrement())
+  candidate_id             Int       @default(0)
+  joborder_id              Int       @default(0)
+  site_id                  Int       @default(0)
+  status                   Int       @default(0)
+  date_submitted           DateTime? @db.DateTime(0)
+  date_created             DateTime  @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  date_modified            DateTime  @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  rating_value             Int?
+  added_by                 Int?
+  headhunt_id              Int       @default(0)
+  commission               Float     @default(0.00) @db.Float
+  submitted_date           DateTime? @db.DateTime(0)
+  offered_date             DateTime? @db.DateTime(0)
+  interviewing_date        DateTime? @db.DateTime(0)
+  client_declined_date     DateTime? @db.DateTime(0)
+  candidate_confirm_status Boolean   @default(false)
+  candidate_confirm_date   DateTime? @db.DateTime(0)
+  candidate_confirm_key    String?   @db.VarChar(255)
+
+  @@index([candidate_id], map: "IDX_candidate_id")
+  @@index([date_created], map: "IDX_date_created")
+  @@index([date_modified], map: "IDX_date_modified")
+  @@index([date_submitted], map: "IDX_date_submitted")
+  @@index([joborder_id], map: "IDX_joborder_id")
+  @@index([site_id], map: "IDX_site_id")
+  @@index([site_id, joborder_id], map: "IDX_site_joborder")
+  @@index([site_id, status], map: "IDX_status_special")
+}
+
+model candidate_joborder_status {
+  candidate_joborder_status_id Int    @id @default(0)
+  short_description            String @default("") @db.VarChar(32)
+  can_be_scheduled             Int    @default(0)
+  triggers_email               Int    @default(1)
+  is_enabled                   Int    @default(1)
+
+  @@index([short_description], map: "IDX_short_description")
+}
+
+model candidate_joborder_status_history {
+  candidate_joborder_status_history_id Int      @id @default(autoincrement())
+  candidate_id                         Int      @default(0)
+  joborder_id                          Int      @default(0)
+  date                                 DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  status_from                          Int      @default(0)
+  status_to                            Int      @default(0)
+  site_id                              Int      @default(0)
+
+  @@index([candidate_id, joborder_id, status_to, site_id], map: "IDX_candidate_joborder_status_to_site")
+  @@index([joborder_id, site_id], map: "IDX_joborder_site")
+  @@index([site_id], map: "IDX_site_id")
+  @@index([site_id, joborder_id, status_to], map: "IDX_site_joborder_status_to")
+  @@index([status_to], map: "IDX_status_to")
+  @@index([status_to, site_id], map: "IDX_status_to_site_id")
+}
+
+model candidate_jobordrer_status_type {
+  candidate_status_type_id Int    @id @default(0)
+  short_description        String @default("") @db.VarChar(32)
+  can_be_scheduled         Int    @default(0)
+
+  @@index([short_description], map: "IDX_short_description")
+}
+
+model candidate_source {
+  source_id    Int       @id @default(autoincrement())
+  name         String?   @db.VarChar(255)
+  site_id      Int?
+  date_created DateTime? @db.DateTime(0)
+  headhunt_id  Int       @default(0)
+
+  @@index([site_id], map: "siteID")
+}
+
+model candidate_tag {
+  id           Int  @id @default(autoincrement()) @db.UnsignedInt
+  site_id      Int? @db.UnsignedInt
+  candidate_id Int  @db.UnsignedInt
+  tag_id       Int  @db.UnsignedInt
+}
+
+model career_portal_questionnaire {
+  career_portal_questionnaire_id Int     @id @default(autoincrement())
+  title                          String  @default("") @db.VarChar(255)
+  site_id                        Int     @default(0)
+  description                    String? @db.VarChar(255)
+  is_active                      Boolean @default(true)
+}
+
+model career_portal_questionnaire_answer {
+  career_portal_questionnaire_answer_id   Int      @id @default(autoincrement())
+  career_portal_questionnaire_question_id Int
+  career_portal_questionnaire_id          Int
+  text                                    String   @default("") @db.VarChar(255)
+  action_source                           String?  @db.VarChar(128)
+  action_notes                            String?  @db.Text
+  action_is_hot                           Boolean? @default(false)
+  action_is_active                        Boolean? @default(false)
+  action_can_relocate                     Boolean? @default(false)
+  action_key_skills                       String?  @db.VarChar(255)
+  position                                Int      @default(0)
+  site_id                                 Int      @default(0)
+}
+
+model career_portal_questionnaire_history {
+  career_portal_questionnaire_history_id Int      @id @default(autoincrement())
+  site_id                                Int      @default(0)
+  candidate_id                           Int      @default(0)
+  question                               String   @default("") @db.VarChar(255)
+  answer                                 String   @default("") @db.VarChar(255)
+  questionnaire_title                    String   @default("") @db.VarChar(255)
+  questionnaire_description              String   @default("") @db.VarChar(255)
+  date                                   DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+}
+
+model career_portal_questionnaire_question {
+  career_portal_questionnaire_question_id Int     @id @default(autoincrement())
+  career_portal_questionnaire_id          Int
+  text                                    String  @default("") @db.VarChar(255)
+  minimum_length                          Int?
+  maximum_length                          Int?
+  required                                Boolean @default(false)
+  position                                Int     @default(0)
+  site_id                                 Int     @default(0)
+  type                                    Int     @default(0)
+}
+
+model career_portal_template {
+  career_portal_template_id Int     @id @default(autoincrement())
+  career_portal_name        String? @db.VarChar(255)
+  setting                   String  @default("") @db.VarChar(128)
+  value                     String? @db.Text
+}
+
+model career_portal_template_site {
+  career_portal_template_id Int     @id @default(autoincrement())
+  career_portal_name        String? @db.VarChar(255)
+  site_id                   Int
+  setting                   String  @default("") @db.VarChar(128)
+  value                     String? @db.Text
+}
+
+model company {
+  company_id         Int       @id @default(autoincrement())
+  site_id            Int       @default(0)
+  billing_contact    Int?
+  name               String    @default("") @db.VarChar(64)
+  address            String?   @db.Text
+  city               String?   @db.VarChar(64)
+  state              String?   @db.VarChar(64)
+  zip                String?   @db.VarChar(16)
+  phone1             String?   @db.VarChar(40)
+  phone2             String?   @db.VarChar(40)
+  url                String?   @db.VarChar(128)
+  key_technologies   String?   @db.Text
+  notes              String?   @db.Text
+  entered_by         Int?
+  owner              Int?
+  date_created       DateTime  @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  date_modified      DateTime  @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  is_hot             Int?
+  fax_number         String?   @db.VarChar(40)
+  import_id          Int?
+  default_company    Int       @default(0)
+  logo               String?   @db.Text
+  owner_first_change DateTime? @db.DateTime(0)
+  owner_last_change  DateTime? @db.DateTime(0)
+
+  @@index([date_created], map: "IDX_date_created")
+  @@index([date_modified], map: "IDX_date_modified")
+  @@index([entered_by], map: "IDX_entered_by")
+  @@index([is_hot], map: "IDX_is_hot")
+  @@index([key_technologies(length: 255)], map: "IDX_key_technologies")
+  @@index([name], map: "IDX_name")
+  @@index([owner], map: "IDX_owner")
+  @@index([site_id], map: "IDX_site_id")
+
+  ownerUser         user?      @relation("CompanyUser", fields: [owner], references: [user_id])
+  billingContact    contact?   @relation("BillingContact", fields: [billing_contact], references: [contact_id])
+  joborders         joborder[] @relation("CompanyJobs")
+
+  contacts          contact[]  @relation("CompanyContacts")
+}
+
+model company_department {
+  company_department_id Int      @id @default(autoincrement())
+  name                  String?  @db.VarChar(128)
+  company_id            Int
+  site_id               Int      @default(0)
+  date_created          DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  created_by            Int?
+
+  contacts              contact[]  @relation("CompanyDepartments")
+}
+
+model contact {
+  contact_id            Int      @id @default(autoincrement())
+  company_id            Int
+  site_id               Int      @default(0)
+  last_name             String   @default("") @db.VarChar(64)
+  first_name            String   @default("") @db.VarChar(64)
+  title                 String?  @db.VarChar(128)
+  email1                String?  @db.VarChar(128)
+  email2                String?  @db.VarChar(128)
+  phone_work            String?  @db.VarChar(40)
+  phone_cell            String?  @db.VarChar(40)
+  phone_other           String?  @db.VarChar(40)
+  address               String?  @db.Text
+  city                  String?  @db.VarChar(64)
+  state                 String?  @db.VarChar(64)
+  zip                   String?  @db.VarChar(16)
+  is_hot                Int?
+  notes                 String?  @db.Text
+  entered_by            Int      @default(0)
+  owner                 Int?
+  date_created          DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  date_modified         DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  left_company          Int      @default(0)
+  import_id             Int      @default(0)
+  company_department_id Int      
+  reports_to            Int?     @default(-1)
+
+  @@index([title], map: " IDX_title")
+  @@index([company_id], map: "IDX_client_id")
+  @@index([date_created], map: "IDX_date_created")
+  @@index([date_modified], map: "IDX_date_modified")
+  @@index([first_name], map: "IDX_first_name")
+  @@index([last_name], map: "IDX_last_name")
+  @@index([owner], map: "IDX_owner")
+  @@index([site_id], map: "IDX_site_id")
+
+  companies       company[]             @relation("BillingContact")
+  company         company               @relation("CompanyContacts", fields: [company_id], references: [company_id])
+  department      company_department?   @relation("CompanyDepartments", fields: [company_department_id], references: [company_department_id])
+  owner_user      user?                 @relation("OwnerUser", fields: [owner], references: [user_id])
+
+  report_to       contact?              @relation("ReportContact", fields: [reports_to], references: [contact_id])
+  subordinates    contact[]             @relation("ReportContact")
+}
+
+model cv_upload {
+  file_id   Int    @id @default(autoincrement())
+  file_path String @db.VarChar(255)
+  user_id   Int
+  content   String @db.Text
+}
+
+model data_item_type {
+  data_item_type_id Int    @id @default(0)
+  short_description String @default("") @db.VarChar(32)
+
+  @@index([short_description], map: "IDX_short_description")
+}
+
+model eeo_ethnic_type {
+  eeo_ethnic_type_id Int    @id @default(autoincrement())
+  type               String @default("") @db.VarChar(128)
+}
+
+model eeo_veteran_type {
+  eeo_veteran_type_id Int    @id @default(autoincrement())
+  type                String @default("") @db.VarChar(128)
+}
+
+model email_history {
+  email_history_id Int       @id @default(autoincrement())
+  from_address     String    @default("") @db.VarChar(128)
+  recipients       String    @db.Text
+  text             String?   @db.Text
+  user_id          Int?
+  site_id          Int       @default(0)
+  date             DateTime? @db.DateTime(0)
+
+  @@index([date], map: "IDX_date")
+  @@index([site_id], map: "IDX_site_id")
+  @@index([user_id], map: "IDX_user_id")
+}
+
+model email_queue {
+  id          Int     @id @default(autoincrement())
+  user_id     Int
+  email       String  @db.VarChar(255)
+  name        String  @db.VarChar(255)
+  subject     String  @db.Text
+  content     String  @db.Text
+  create_time Int
+  sent_time   Int?
+  status      Boolean @default(true)
+  send_now    Int     @default(0)
+}
+
+model email_template {
+  email_template_id  Int     @id @default(autoincrement())
+  text               String? @db.Text
+  allow_substitution Int     @default(0)
+  site_id            Int     @default(0)
+  tag                String? @db.VarChar(255)
+  title              String? @db.VarChar(255)
+  possible_variables String? @db.Text
+  disabled           Int?    @default(0)
+  type               String  @default("S") @db.VarChar(1)
+}
+
+model extension_statistics {
+  extension_statistics_id Int       @id @default(autoincrement())
+  extension               String    @default("") @db.VarChar(128)
+  action                  String    @default("") @db.VarChar(128)
+  user                    String    @default("") @db.VarChar(128)
+  date                    DateTime? @db.Date
+}
+
+model external_user_profile {
+  id                   Int      @id @default(autoincrement())
+  user_id              Int
+  job_title            String   @db.VarChar(255)
+  citizen_id           String   @db.VarChar(50)
+  citizen_issued_date  DateTime @db.Date
+  citizen_issued_place String   @db.VarChar(255)
+  beneficiary_bank     String   @db.VarChar(255)
+  bank_account         String   @db.VarChar(50)
+}
+
+model external_users {
+  id            Int     @id @default(autoincrement())
+  type          Boolean
+  email         String  @db.VarChar(255)
+  phone         String  @db.VarChar(255)
+  verified      Boolean @default(true)
+  register_date Int
+  name          String  @db.VarChar(255)
+  referral_code String? @default("") @db.VarChar(255)
+  password      String  @db.VarChar(64)
+  verify_code   String  @db.VarChar(255)
+  is_employee   Int     @default(0)
+}
+
+model extra_field {
+  extra_field_id Int     @id @default(autoincrement())
+  data_item_id   Int?    @default(0)
+  field_name     String? @db.VarChar(255)
+  value          String? @db.Text
+  import_id      Int?
+  site_id        Int?    @default(0)
+  data_item_type Int?    @default(0)
+
+  @@index([site_id], map: "IDX_site_id")
+  @@index([data_item_id], map: "assoc_id")
+}
+
+model extra_field_settings {
+  extra_field_settings_id Int       @id @default(autoincrement())
+  field_name              String?   @db.VarChar(255)
+  import_id               Int?
+  site_id                 Int       @default(0)
+  date_created            DateTime? @db.DateTime(0)
+  data_item_type          Int?      @default(0)
+  extra_field_type        Int       @default(1)
+  extra_field_options     String?   @db.Text
+  position                Int       @default(0)
+}
+
+model feedback {
+  feedback_id      Int      @id @default(autoincrement())
+  user_id          Int?
+  site_id          Int      @default(0)
+  date_created     DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  subject          String   @default("") @db.VarChar(255)
+  reply_to_address String   @default("") @db.VarChar(255)
+  reply_to_name    String   @default("") @db.VarChar(255)
+  feedback         String   @db.Text
+  archived         Int      @default(0)
+}
+
+model forget_password {
+  id         Int    @id @default(autoincrement())
+  token      String @db.VarChar(255)
+  login_time Int
+  user_id    Int
+}
+
+model headhunt_dashboard {
+  id                Int   @id @default(autoincrement())
+  headhunt_id       Int
+  placed_candidate  Int
+  applied_candidate Int
+  total_commission  Float @db.Float
+  day_to_hire       Float @db.Float
+  no_submitted      Int
+  no_interviewed    Int
+  no_offered        Int
+  no_placed         Int
+  active_candidate  Int
+}
+
+model history {
+  history_id     Int       @id @default(autoincrement())
+  data_item_type Int?
+  data_item_id   Int?
+  the_field      String?   @db.VarChar(64)
+  previous_value String?   @db.Text
+  new_value      String?   @db.Text
+  description    String?   @db.VarChar(192)
+  set_date       DateTime? @db.DateTime(0)
+  entered_by     Int?
+  site_id        Int       @default(0)
+
+  @@index([entered_by], map: "IDX_DATA_ENTERED_BY")
+  @@index([data_item_id, data_item_type, site_id], map: "IDX_data_item_id_type_site")
+}
+
+model http_log {
+  log_id          Int       @id @default(autoincrement())
+  site_id         Int
+  remote_addr     String    @db.Char(16)
+  http_user_agent String?   @db.VarChar(255)
+  script_filename String?   @db.VarChar(255)
+  request_method  String?   @db.VarChar(16)
+  query_string    String?   @db.VarChar(255)
+  request_uri     String?   @db.VarChar(255)
+  script_name     String?   @db.VarChar(255)
+  log_type        Int
+  date            DateTime? @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+}
+
+model http_log_types {
+  log_type_id      Int     @id
+  name             String  @db.VarChar(16)
+  description      String? @db.VarChar(255)
+  default_log_type Boolean @default(false)
+}
+
+/// This model has been renamed to 'Renamedimport' during introspection, because the original name 'import' is reserved.
+model Renamedimport {
+  import_id     Int       @id @default(autoincrement())
+  module_name   String    @default("") @db.VarChar(255)
+  reverted      Int       @default(0)
+  site_id       Int       @default(0)
+  import_errors String?   @db.Text
+  added_lines   Int?
+  date_created  DateTime? @db.DateTime(0)
+
+  @@map("import")
+}
+
+model installtest {
+  id Int @id @default(0)
+}
+
+model job_categories {
+  job_category_id   Int    @id @default(autoincrement())
+  job_category_name String @db.VarChar(255)
+  display_order     Int    @default(0)
+}
+
+model joborder {
+  joborder_id           Int       @id @default(autoincrement())
+  recruiter             Int?
+  contact_id            Int?
+  company_id            Int?
+  entered_by            Int       @default(0)
+  owner                 Int?
+  site_id               Int       @default(0)
+  client_job_id         String?   @db.VarChar(32)
+  title                 String    @default("") @db.VarChar(64)
+  brief_description     String    @db.Text
+  description           String?   @db.Text
+  notes                 String?   @db.Text
+  type                  String    @default("C") @db.VarChar(64)
+  duration              String?   @db.VarChar(64)
+  rate_max              String?   @db.VarChar(255)
+  salary                String?   @db.VarChar(64)
+  status                String    @default("Active") @db.VarChar(16)
+  is_hot                Int       @default(0)
+  openings              Int?
+  city                  String    @default("") @db.VarChar(64)
+  state                 String    @default("") @db.VarChar(64)
+  start_date            DateTime? @db.DateTime(0)
+  date_created          DateTime  @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  date_modified         DateTime  @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  public                Int       @default(0)
+  company_department_id Int?
+  is_admin_hidden       Int?      @default(0)
+  openings_available    Int?      @default(0)
+  questionnaire_id      Int?
+  commission            String    @default("0") @db.VarChar(20)
+  job_category          String?   @db.VarChar(255)
+
+  @@index([company_id], map: "IDX_client_id")
+  @@index([contact_id], map: "IDX_contact_id")
+  @@index([date_created], map: "IDX_date_created")
+  @@index([date_modified], map: "IDX_date_modified")
+  @@index([entered_by], map: "IDX_entered_by")
+  @@index([is_hot], map: "IDX_is_hot")
+  @@index([openings], map: "IDX_jopenings")
+  @@index([owner], map: "IDX_owner")
+  @@index([recruiter], map: "IDX_recruiter")
+  @@index([site_id, status(length: 8)], map: "IDX_site_id_status")
+  @@index([start_date], map: "IDX_start_date")
+  @@index([title], map: "IDX_title")
+
+  company               company?   @relation("CompanyJobs", fields: [company_id], references: [company_id])
+}
+
+model joborder_favorite {
+  id          Int @id @default(autoincrement())
+  user_id     Int
+  joborder_id Int
+}
+
+model module_acl {
+  id           Int    @id @default(autoincrement())
+  module       String @db.VarChar(255)
+  access_level Int
+  permission   Int
+}
+
+model module_schema {
+  module_schema_id Int     @id @default(autoincrement())
+  name             String? @db.VarChar(64)
+  version          Int?
+}
+
+model mru {
+  mru_id         Int      @id @default(autoincrement())
+  user_id        Int?
+  site_id        Int      @default(0)
+  data_item_type Int      @default(0)
+  data_item_text String   @default("") @db.VarChar(64)
+  url            String   @default("") @db.VarChar(255)
+  date_created   DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+
+  @@index([user_id, site_id], map: "IDX_user_site")
+}
+
+model owner_change_log {
+  id              Int      @id @default(autoincrement())
+  from_owner      String   @db.VarChar(255)
+  to_owner        String   @db.VarChar(255)
+  change_time     DateTime @db.DateTime(0)
+  change_user     String   @db.VarChar(255)
+  access_location String   @db.Text
+}
+
+model payment_config {
+  id          Int    @id @default(autoincrement())
+  description String @db.VarChar(255)
+  amount      Int
+  duration    Int
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model queue {
+  queue_id       Int       @id @default(autoincrement())
+  site_id        Int
+  task           String    @db.VarChar(125)
+  args           String?   @db.Text
+  priority       Int       @default(5) @db.TinyInt
+  date_created   DateTime  @db.DateTime(0)
+  date_timeout   DateTime  @db.DateTime(0)
+  date_completed DateTime? @db.DateTime(0)
+  locked         Boolean   @default(false)
+  error          Boolean?  @default(false)
+  response       String?   @db.VarChar(255)
+}
+
+model saved_list {
+  saved_list_id     Int       @id @default(autoincrement())
+  description       String    @default("") @db.VarChar(64)
+  data_item_type    Int       @default(0)
+  site_id           Int       @default(0)
+  is_dynamic        Int?      @default(0)
+  datagrid_instance String?   @default("") @db.VarChar(64)
+  parameters        String?   @db.Text
+  created_by        Int?      @default(0)
+  number_entries    Int?      @default(0)
+  date_created      DateTime? @db.DateTime(0)
+  date_modified     DateTime? @db.DateTime(0)
+
+  @@index([data_item_type], map: "IDX_data_item_type")
+  @@index([description], map: "IDX_description")
+  @@index([site_id], map: "IDX_site_id")
+}
+
+model saved_list_entry {
+  saved_list_entry_id Int       @id @default(autoincrement())
+  saved_list_id       Int
+  data_item_type      Int       @default(0)
+  data_item_id        Int       @default(0)
+  site_id             Int       @default(0)
+  date_created        DateTime? @db.DateTime(0)
+
+  @@index([data_item_id], map: "IDX_data_item_id")
+  @@index([data_item_type], map: "IDX_data_item_type")
+  @@index([saved_list_id], map: "IDX_hot_list_id")
+  @@index([data_item_type, data_item_id], map: "IDX_type_id")
+}
+
+model saved_search {
+  search_id      Int       @id @default(autoincrement())
+  data_item_text String?   @db.Text
+  url            String?   @db.Text
+  is_custom      Int?
+  data_item_type Int?
+  user_id        Int?
+  site_id        Int?
+  date_created   DateTime? @db.DateTime(0)
+}
+
+model session {
+  id         Int     @id @default(autoincrement())
+  tokenID    String  @db.VarChar(255)
+  login_time Int
+  user_id    Int
+  user_agent String? @db.VarChar(255)
+}
+
+model settings {
+  settings_id   Int     @id @default(autoincrement())
+  setting       String  @default("") @db.VarChar(255)
+  value         String? @db.VarChar(255)
+  site_id       Int     @default(0)
+  settings_type Int?    @default(0)
+}
+
+model site {
+  site_id                 Int       @id @default(autoincrement())
+  name                    String    @default("") @db.VarChar(255)
+  is_demo                 Int       @default(0)
+  user_licenses           Int       @default(0)
+  entered_by              Int       @default(0)
+  date_created            DateTime  @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  unix_name               String?   @db.VarChar(128)
+  company_id              Int?
+  is_free                 Int?
+  account_active          Int       @default(1)
+  account_deleted         Int       @default(0)
+  reason_disabled         String?   @db.Text
+  time_zone               Int?      @default(0)
+  time_format_24          Int?      @default(0)
+  date_format_ddmmyy      Int?      @default(0)
+  is_hr_mode              Int?      @default(0)
+  file_size_kb            Int?      @default(0)
+  page_views              BigInt?   @default(0)
+  page_view_days          Int?      @default(0)
+  last_viewed_day         DateTime? @db.Date
+  first_time_setup        Int?      @default(0) @db.TinyInt
+  localization_configured Int?      @default(0)
+  agreed_to_license       Int?      @default(0)
+  limit_warning           Boolean   @default(false)
+
+  @@index([account_deleted], map: "IDX_account_deleted")
+}
+
+model sph_counter {
+  counter_id Int @id
+  max_doc_id Int
+}
+
+model subscription {
+  id           Int      @id @default(autoincrement())
+  email        String   @db.VarChar(255)
+  status       Boolean  @default(true)
+  created_date DateTime @default(now()) @db.Timestamp(0)
+}
+
+model system {
+  system_id                     Int      @id @default(0)
+  uid                           Int?
+  available_version             Int?     @default(0)
+  date_version_checked          DateTime @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  available_version_description String?  @db.Text
+  disable_version_check         Int?     @default(0)
+}
+
+model system_dashboard {
+  id         Int @id @default(autoincrement())
+  total_jobs Int
+  new_jobs   Int
+  open_jobs  Int
+}
+
+model tag {
+  tag_id        Int       @id @default(autoincrement()) @db.UnsignedInt
+  tag_parent_id Int?      @db.UnsignedInt
+  title         String?   @db.VarChar(255)
+  description   String?   @db.VarChar(500)
+  site_id       Int?      @db.UnsignedInt
+  date_created  DateTime? @default(now()) @db.Timestamp(0)
+}
+
+model unlock_keys {
+  id          Int    @id @default(autoincrement())
+  unlock_key  String @db.VarChar(255)
+  create_time Int
+  user_id     Int
+}
+
+model user {
+  user_id                   Int     @id @default(autoincrement())
+  site_id                   Int     @default(0)
+  user_name                 String  @default("") @db.VarChar(64)
+  email                     String? @db.VarChar(128)
+  password                  String  @default("") @db.VarChar(128)
+  access_level              Int     @default(100)
+  can_change_password       Int     @default(1)
+  is_test_user              Int     @default(0)
+  last_name                 String  @default("") @db.VarChar(40)
+  first_name                String  @default("") @db.VarChar(40)
+  is_demo                   Int?    @default(0)
+  categories                String? @db.VarChar(192)
+  session_cookie            String? @db.VarChar(256)
+  pipeline_entries_per_page Int?    @default(15)
+  column_preferences        String? @db.LongText
+  force_logout              Int?    @default(0)
+  title                     String? @default("") @db.VarChar(64)
+  phone_work                String? @default("") @db.VarChar(64)
+  phone_cell                String? @default("") @db.VarChar(64)
+  phone_other               String? @default("") @db.VarChar(64)
+  address                   String? @db.Text
+  notes                     String? @db.Text
+  company                   String? @db.VarChar(255)
+  city                      String? @db.VarChar(64)
+  state                     String? @db.VarChar(64)
+  zip_code                  String? @db.VarChar(16)
+  country                   String? @db.VarChar(128)
+  can_see_eeo_info          Int?    @default(0)
+
+  @@index([access_level], map: "IDX_access_level")
+  @@index([first_name], map: "IDX_first_name")
+  @@index([last_name], map: "IDX_last_name")
+  @@index([site_id], map: "IDX_site_id")
+
+  companies                 company[]         @relation("CompanyUser")
+  contact_owner             contact[]         @relation("OwnerUser")
+}
+
+model user_login {
+  user_login_id  Int       @id @default(autoincrement())
+  user_id        Int?
+  site_id        Int       @default(0)
+  ip             String    @default("") @db.VarChar(128)
+  user_agent     String?   @db.VarChar(255)
+  date           DateTime  @default(dbgenerated("('1000-01-01 00:00:00')")) @db.DateTime(0)
+  successful     Int       @default(0)
+  host           String?   @db.VarChar(255)
+  date_refreshed DateTime? @db.DateTime(0)
+
+  @@index([date], map: "IDX_date")
+  @@index([date_refreshed], map: "IDX_date_refreshed")
+  @@index([ip], map: "IDX_ip")
+  @@index([site_id, date], map: "IDX_site_id_date")
+  @@index([successful, site_id], map: "IDX_successful_site_id")
+  @@index([user_id], map: "IDX_user_id")
+}
+
+model word_verification {
+  word_verification_ID Int    @id @default(autoincrement())
+  word                 String @default("") @db.VarChar(28)
+}
+
+model xml_feed_submits {
+  feed_id        Int      @id @default(autoincrement())
+  feed_site      String   @db.VarChar(75)
+  feed_url       String   @db.VarChar(255)
+  date_last_post DateTime @db.Date
+}
+
+model xml_feeds {
+  xml_feed_id       Int     @id @default(autoincrement())
+  name              String  @db.VarChar(50)
+  description       String? @db.VarChar(255)
+  website           String? @db.VarChar(255)
+  post_url          String  @db.VarChar(255)
+  success_string    String  @db.VarChar(255)
+  xml_template_name String  @db.VarChar(255)
+}
+
+model zipcodes {
+  zipcode  Int    @id @default(0) @db.MediumInt
+  city     String @db.TinyText
+  state    String @default("") @db.VarChar(2)
+  areacode Int    @default(0) @db.SmallInt
+}
