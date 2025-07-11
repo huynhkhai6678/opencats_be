@@ -8,16 +8,25 @@ import { CompaniesModule } from './companies/companies.module';
 import { HistoriesModule } from './histories/histories.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { JobOrdersModule } from './job-orders/job-orders.module';
+import { ConfigModule } from '@nestjs/config';
+import { CandidatesController } from './candidates/candidates.controller';
+import { CandidatesModule } from './candidates/candidates.module';
+import { AttachmentsModule } from './attachments/attachments.module';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
     PdfModule,
     PrismaModule,
     AuthModule,
     CompaniesModule,
     HistoriesModule,
     ContactsModule,
-    JobOrdersModule
+    JobOrdersModule,
+    CandidatesModule,
+    AttachmentsModule
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -2,9 +2,11 @@ import { BadGatewayException, Inject, Injectable, NotFoundException } from '@nes
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from 'generated/prisma';
+import { contact, Prisma } from 'generated/prisma';
 import { REQUEST } from '@nestjs/core';
 import { HistoriesService } from '../histories/histories.service';
+import { CONSTANTS, JOBORDER_SELECT_QUERY_BODY } from '../constants';
+import * as md5 from 'md5';
 
 @Injectable()
 export class CompaniesService {
@@ -178,6 +180,69 @@ export class CompaniesService {
     return {
       message : `Delete company successfully`
     };
+  }
+
+  async findCompanyContact(id: number) {
+    const user = this.request.user;
+    let data : contact[] = [];
+
+    if (user.access_level === CONSTANTS.ACCESS_LEVEL_ROOT) {
+      data = await this.prisma.contact.findMany({
+        where : {
+          company_id: id
+        }
+      });
+    } else {
+      data = await this.prisma.contact.findMany({
+        where : {
+          company_id: id,
+          owner: user.user_id
+        }
+      })
+    }    
+
+    return {
+      data
+    };
+  }
+
+  async findCompanyJobOrder(id: number) {
+    const user = this.request.user;
+    let whereClause = Prisma.sql`WHERE joborder.company_id = ${id}`;
+    if (user.access_level !== CONSTANTS.ACCESS_LEVEL_ROOT) {
+      whereClause = Prisma.sql`WHERE joborder.company_id = ${id} AND joborder.owner = ${user.user_id}`;
+    }
+
+    const groupBy = Prisma.sql`GROUP BY joborder.joborder_id`;
+    const fullQuery = Prisma.sql`${Prisma.raw(JOBORDER_SELECT_QUERY_BODY)} ${whereClause} ${groupBy}`;
+    const data = await this.prisma.$queryRaw<Array<any>>(fullQuery);
+
+    data.forEach(item => {
+      item.pipeline = Number(item.pipeline);
+      item.submitted = Number(item.submitted);
+      item.daysOld = Number(item.daysOld);
+    });
+
+    return {
+      data
+    };
+  }
+
+  async findCompanyAttachment(id: number) {
+    const data = await this.prisma.attachment.findMany({
+      where : {
+        data_item_id: id,
+        data_item_type: CONSTANTS.DATA_ITEM_COMPANY
+      }
+    });
+
+    data.forEach(item => {
+      item['hash'] = md5(item.directory_name);
+    });
+
+    return {
+      data,
+    }
   }
 
   formatDate(date: Date): string {

@@ -4,9 +4,9 @@ import { UpdateContactDto } from './dto/update-contact.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { REQUEST } from '@nestjs/core';
 import { company, contact, Prisma } from 'generated/prisma';
-import { CONSTANTS } from '../constants';
+import { CONSTANTS, JOBORDER_SELECT_QUERY_BODY } from '../constants';
 import { CompanyDepartmentService } from '../services/company-department.service';
-
+import * as md5 from 'md5';
 
 @Injectable()
 export class ContactsService {
@@ -111,11 +111,6 @@ export class ContactsService {
       FROM contact
     `);
 
-    data.forEach(item => {
-      item.jobs = Number(item.jobs);
-      item.attachmentPresent = Number(item.attachmentPresent);
-    });
-
     return { data, total: Number(total) };
   }
 
@@ -199,6 +194,45 @@ export class ContactsService {
           },
         },
       })
+    }
+  }
+
+  async findContactJobOrder(id: number) {
+    const user = this.request.user;
+    let whereClause = Prisma.sql`WHERE joborder.company_id = ${id}`;
+    if (user.access_level !== CONSTANTS.ACCESS_LEVEL_ROOT) {
+      whereClause = Prisma.sql`WHERE joborder.contact_id = ${id} AND joborder.owner = ${user.user_id}`;
+    }
+
+    const groupBy = Prisma.sql`GROUP BY joborder.joborder_id`;
+    const fullQuery = Prisma.sql`${Prisma.raw(JOBORDER_SELECT_QUERY_BODY)} ${whereClause} ${groupBy}`;
+    const data = await this.prisma.$queryRaw<Array<any>>(fullQuery);
+
+    data.forEach(item => {
+      item.pipeline = Number(item.pipeline);
+      item.submitted = Number(item.submitted);
+      item.daysOld = Number(item.daysOld);
+    });
+
+    return {
+      data
+    };
+  }
+
+  async findContactAttachment(id: number) {
+    const data = await this.prisma.attachment.findMany({
+      where : {
+        data_item_id: id,
+        data_item_type: CONSTANTS.DATA_ITEM_CONTACT
+      }
+    });
+
+    data.forEach(item => {
+      item['hash'] = md5(item.directory_name);
+    });
+
+    return {
+      data,
     }
   }
 

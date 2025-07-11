@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Post, Req, UseGuards, ValidationPipe } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 
 @Controller('auth')
@@ -10,5 +11,10 @@ export class AuthController {
   @Post('login')
   signIn(@Body(ValidationPipe) signInDto: LoginDto) {
     return this.authService.signIn(signInDto.username, signInDto.password);
+  }
+
+  @Post('change-password')
+  changePassword(@Body(ValidationPipe) changePasswordDto: ChangePasswordDto) {
+    return this.authService.changePassword(changePasswordDto);
   }
 }

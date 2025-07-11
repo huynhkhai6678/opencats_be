@@ -1,6 +1,5 @@
 import {
   IsDefined,
-  IsEmail,
   IsString,
 } from 'class-validator';
 

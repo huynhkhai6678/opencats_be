@@ -77,7 +77,5 @@ export class CreateJobOrderDto {
     @IsString()
     notes : string;
 
-    @IsOptional()
-    @IsString()
-    departments? : string;
+    company_department_id : number;
 }

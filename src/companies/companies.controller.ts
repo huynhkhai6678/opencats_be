@@ -24,6 +24,21 @@ export class CompaniesController {
     return this.companiesService.findOne(+id);
   }
 
+  @Get(':id/contacts')
+  findCompanyContact(@Param('id', ParseIntPipe) id: string) {
+    return this.companiesService.findCompanyContact(+id);
+  }
+
+  @Get(':id/job-orders')
+  findCompanyJobOrder(@Param('id', ParseIntPipe) id: string) {
+    return this.companiesService.findCompanyJobOrder(+id);
+  }
+
+  @Get(':id/attachments')
+  findCompanyAttachment(@Param('id', ParseIntPipe) id: string) {
+    return this.companiesService.findCompanyAttachment(+id);
+  }
+
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateCompanyDto: UpdateCompanyDto) {
     return this.companiesService.update(+id, updateCompanyDto);

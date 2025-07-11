@@ -14,6 +14,8 @@ model access_level {
   long_description  String @db.Text
 
   @@index([short_description], map: "IDX_access_level")
+
+  users user[] @relation("AccessLevelUser")
 }
 
 model activity {
@@ -364,6 +366,7 @@ model company_department {
   created_by            Int?
 
   contacts              contact[]  @relation("CompanyDepartments")
+  joborders             joborder[]  @relation("JobOrderDepartment")
 }
 
 model contact {
@@ -405,10 +408,12 @@ model contact {
   companies       company[]             @relation("BillingContact")
   company         company               @relation("CompanyContacts", fields: [company_id], references: [company_id])
   department      company_department?   @relation("CompanyDepartments", fields: [company_department_id], references: [company_department_id])
-  owner_user      user?                 @relation("OwnerUser", fields: [owner], references: [user_id])
+  owner_user      user?                 @relation("ContactOwnerUser", fields: [owner], references: [user_id])
 
   report_to       contact?              @relation("ReportContact", fields: [reports_to], references: [contact_id])
   subordinates    contact[]             @relation("ReportContact")
+
+  joborders       joborder[]            @relation("JobOrderContact")
 }
 
 model cv_upload {
@@ -671,7 +676,11 @@ model joborder {
   @@index([start_date], map: "IDX_start_date")
   @@index([title], map: "IDX_title")
 
-  company               company?   @relation("CompanyJobs", fields: [company_id], references: [company_id])
+  company               company?              @relation("CompanyJobs", fields: [company_id], references: [company_id])
+  department            company_department?   @relation("JobOrderDepartment", fields: [company_department_id], references: [company_department_id])
+  contact               contact?              @relation("JobOrderContact", fields: [contact_id], references: [contact_id])
+  owner_user            user?                 @relation("JobOrderOwnerUser", fields: [owner], references: [user_id])
+  recruiter_user        user?                 @relation("JobOrderRecruiterUser", fields: [recruiter], references: [user_id])
 }
 
 model joborder_favorite {
@@ -903,8 +912,11 @@ model user {
   @@index([last_name], map: "IDX_last_name")
   @@index([site_id], map: "IDX_site_id")
 
-  companies                 company[]         @relation("CompanyUser")
-  contact_owner             contact[]         @relation("OwnerUser")
+  companies                 company[]           @relation("CompanyUser")
+  contacts                  contact[]           @relation("ContactOwnerUser")
+  joborder_owner            joborder[]          @relation("JobOrderOwnerUser")
+  joborder_recruiter        joborder[]          @relation("JobOrderRecruiterUser")
+  access                    access_level        @relation("AccessLevelUser", fields: [access_level], references: [access_level_id])
 }
 
 model user_login {
