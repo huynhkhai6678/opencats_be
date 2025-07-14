@@ -34,6 +34,11 @@ export class JobOrdersController {
     return this.jobOrdersService.findJobOrderAttachment(+id);
   }
 
+  @Get(':id/pipelines')
+  findJobOrderPipeline(@Param('id', ParseIntPipe) id: string) {
+    return this.jobOrdersService.findJobOrderPipeline(+id);
+  }
+
   @Get('companies/:id')
   findCompanyJobOrder(@Param('id', ParseIntPipe) id: string) {
     return this.jobOrdersService.findCompanyJobOrder(+id);

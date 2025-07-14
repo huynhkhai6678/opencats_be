@@ -303,4 +303,38 @@ export class JobOrdersService {
       data,
     }
   }
+
+  async findJobOrderPipeline(id: number) {
+    const data = await this.prisma.candidate_joborder.findMany({
+      where : {
+        joborder_id: id
+      },
+      select: {
+        candidate_joborder_id : true,
+        candidate_confirm_status: true,
+        rating_value: true,
+        date_created: true,
+        status_info : {
+          select : {
+            short_description: true
+          }
+        },
+        candidate: {
+          select: {
+            full_name: true,
+            date_created: true,
+            entered_user: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
+      }
+    });
+
+    return {
+      data
+    }
+  }
 }

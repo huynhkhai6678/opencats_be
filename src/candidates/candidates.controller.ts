@@ -33,6 +33,11 @@ export class CandidatesController {
     return this.candidatesService.findAll(query);
   }
 
+  @Get('get-selection')
+  findCandidateListSelection() {
+    return this.candidatesService.findCandidateListSelection();
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseIntPipe) id: string) {
     return this.candidatesService.findOne(+id);
@@ -46,6 +51,16 @@ export class CandidatesController {
   @Get(':id/attachments')
   findCandidateAttachment(@Param('id', ParseIntPipe) id: string) {
     return this.candidatesService.findCandidateAttachment(+id);
+  }
+
+  @Get(':id/pipelines')
+  findCandidatePipeline(@Param('id', ParseIntPipe) id: string) {
+    return this.candidatesService.findCandidatePipeline(+id);
+  }
+
+  @Get(':id/activities')
+  findCandidateActivities(@Param('id', ParseIntPipe) id: string) {
+    return this.candidatesService.findCandidateActivities(+id);
   }
 
   @Patch(':id')

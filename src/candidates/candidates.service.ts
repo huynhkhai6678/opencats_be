@@ -8,6 +8,7 @@ import { CandidateSourceService } from '../services/candidate-source.service';
 import { AttachmentsService } from '../attachments/attachments.service';
 import { CONSTANTS } from '../constants';
 import * as md5 from 'md5';
+import { CONTAINS } from 'class-validator';
 
 @Injectable()
 export class CandidatesService {
@@ -224,6 +225,110 @@ export class CandidatesService {
 
     data.forEach(item => {
       item['hash'] = md5(item.directory_name);
+    });
+
+    return {
+      data,
+    }
+  }
+
+  async findCandidatePipeline(id: number) {
+    const data = await this.prisma.candidate_joborder.findMany({
+      where : {
+        candidate_id :id
+      },
+      select : {
+        candidate_joborder_id : true,
+        candidate_confirm_status: true,
+        rating_value: true,
+        date_created: true,
+        joborder_id: true,
+        candidate: {
+          select: {
+            entered_user: {
+              select: {
+                name: true
+              }
+            }
+          }
+        },
+        status_info: {
+          select : {
+            short_description : true
+          }
+        },
+        joborder : {
+          select : {
+            title: true,
+            company_id: true,
+            company : {
+              select : {
+                name : true,
+                company_id: true,
+                owner_user : {
+                  select : {
+                    first_name : true,
+                    last_name: true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    });
+
+    return {
+      data,
+    }
+  }
+
+  async findCandidateActivities(id: number) {
+    const data = await this.prisma.activity.findMany({
+      where : {
+        data_item_id: id,
+        data_item_type: CONSTANTS.DATA_ITEM_CANDIDATE
+      },
+      select : {
+        activity_id: true,
+        date_created : true,
+        notes: true,
+        type_info : {
+          select : {
+            short_description: true
+          }
+        },
+        joborder : {
+          select : {
+            title: true,
+            company_id: true,
+            company : {
+              select : {
+                name: true
+              }
+            }
+          }
+        },
+        entered_user : {
+          select : {
+            first_name: true,
+            last_name: true
+          }
+        }
+      }
+    });
+
+    return {
+      data,
+    }
+  }
+
+  async findCandidateListSelection() {
+    const data = await this.prisma.candidate.findMany({
+      select : {
+        candidate_id: true,
+        full_name: true
+      }
     });
 
     return {

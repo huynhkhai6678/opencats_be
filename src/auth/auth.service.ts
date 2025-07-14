@@ -4,7 +4,6 @@ import { PrismaService } from '../prisma/prisma.service';
 import * as md5 from 'md5';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { REQUEST } from '@nestjs/core';
-import { first } from 'rxjs';
 
 @Injectable()
 export class AuthService {
@@ -26,7 +25,21 @@ export class AuthService {
       }
     });
 
-    if (!user || user.password !== hashedPassword) {
+    if (!user) {
+      throw new BadRequestException('Invalid username or password.');
+    }
+
+    if (user.password !== hashedPassword) {
+      const loginActivity = {
+        ip : this.request.headers['x-forwarded-for'] ||  this.request.connection.remoteAddress,
+        host : this.request.headers['x-forwarded-for'] ||  this.request.connection.remoteAddress,
+        user_agent : this.request.headers['user-agent'],
+        user_id: user?.user_id,
+        date : new Date(),
+        successful : 0
+      }
+
+      await this.createLoginActivity(loginActivity);
       throw new BadRequestException('Invalid username or password.');
     }
 
@@ -43,6 +56,17 @@ export class AuthService {
     }
 
     const token = await this.jwtService.signAsync(data);
+
+    // Create login activity
+    const loginActivity = {
+      ip : this.request.headers['x-forwarded-for'] ||  this.request.connection.remoteAddress,
+      host : this.request.headers['x-forwarded-for'] ||  this.request.connection.remoteAddress,
+      user_agent : this.request.headers['user-agent'],
+      user_id: user.user_id,
+      date : new Date(),
+      successful : 1
+    }
+    await this.createLoginActivity(loginActivity);
     
     return {
       data,
@@ -79,5 +103,11 @@ export class AuthService {
     return {
       message: 'Change Password successfully'
     }
+  }
+
+  async createLoginActivity(createLoginActivityDto: any) {
+    return await this.prisma.user_login.create({
+      data : createLoginActivityDto
+    });
   }
 }

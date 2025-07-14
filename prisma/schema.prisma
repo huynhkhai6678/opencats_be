@@ -42,6 +42,10 @@ model activity {
   @@index([site_id], map: "IDX_site_id")
   @@index([type], map: "IDX_type")
   @@index([data_item_type, data_item_id], map: "IDX_type_id")
+
+  type_info             activity_type         @relation("ActivityTypeRelation", fields: [type], references: [activity_type_id])
+  entered_user          user?                 @relation("ActivityEnteredByUser", fields: [entered_by], references: [user_id])
+  joborder              joborder?             @relation("ActivitJoborrderRelation", fields: [joborder_id], references: [joborder_id])
 }
 
 model activity_type {
@@ -49,6 +53,8 @@ model activity_type {
   short_description String @default("") @db.VarChar(32)
 
   @@index([short_description], map: "IDX_activity_type1")
+
+  activities    activity[]    @relation("ActivityTypeRelation")
 }
 
 model attachment {
@@ -169,6 +175,10 @@ model candidate {
   @@index([phone_work], map: "IDX_phone_work")
   @@index([site_id, first_name, last_name, date_modified], map: "IDX_site_first_last_modified")
   @@index([site_id, email1(length: 8), email2(length: 8)], map: "IDX_site_id_email_1_2")
+
+  candidate_joborders   candidate_joborder[]  @relation("CandidateToJobOrders")
+  entered_user          external_users        @relation("EnteredByUser", fields: [entered_by], references: [id])
+  owner_user            external_users?       @relation("OwnerUser", fields: [owner], references: [id])
 }
 
 model candidate_joborder {
@@ -200,6 +210,10 @@ model candidate_joborder {
   @@index([site_id], map: "IDX_site_id")
   @@index([site_id, joborder_id], map: "IDX_site_joborder")
   @@index([site_id, status], map: "IDX_status_special")
+
+  candidate             candidate?             @relation("CandidateToJobOrders", fields: [candidate_id], references: [candidate_id])
+  joborder              joborder?              @relation("JobOrderToCandidateJobOrders", fields: [joborder_id], references: [joborder_id])
+  status_info           candidate_joborder_status? @relation("CandidateJobOrderStatusRelation", fields: [status], references: [candidate_joborder_status_id])
 }
 
 model candidate_joborder_status {
@@ -210,6 +224,7 @@ model candidate_joborder_status {
   is_enabled                   Int    @default(1)
 
   @@index([short_description], map: "IDX_short_description")
+  candidate_joborders candidate_joborder[] @relation("CandidateJobOrderStatusRelation")
 }
 
 model candidate_joborder_status_history {
@@ -350,7 +365,7 @@ model company {
   @@index([owner], map: "IDX_owner")
   @@index([site_id], map: "IDX_site_id")
 
-  ownerUser         user?      @relation("CompanyUser", fields: [owner], references: [user_id])
+  owner_user         user?      @relation("CompanyUser", fields: [owner], references: [user_id])
   billingContact    contact?   @relation("BillingContact", fields: [billing_contact], references: [contact_id])
   joborders         joborder[] @relation("CompanyJobs")
 
@@ -510,6 +525,9 @@ model external_users {
   password      String  @db.VarChar(64)
   verify_code   String  @db.VarChar(255)
   is_employee   Int     @default(0)
+
+  entered_candidates        candidate[]         @relation("EnteredByUser")
+  owned_candidates          candidate[]         @relation("OwnerUser")
 }
 
 model extra_field {
@@ -681,6 +699,8 @@ model joborder {
   contact               contact?              @relation("JobOrderContact", fields: [contact_id], references: [contact_id])
   owner_user            user?                 @relation("JobOrderOwnerUser", fields: [owner], references: [user_id])
   recruiter_user        user?                 @relation("JobOrderRecruiterUser", fields: [recruiter], references: [user_id])
+  candidate_joborders   candidate_joborder[]  @relation("JobOrderToCandidateJobOrders")
+  activity              activity[]            @relation("ActivitJoborrderRelation")
 }
 
 model joborder_favorite {
@@ -758,6 +778,8 @@ model saved_list {
   date_created      DateTime? @db.DateTime(0)
   date_modified     DateTime? @db.DateTime(0)
 
+  entries           saved_list_entry[]  @relation("SavedListEntries")
+
   @@index([data_item_type], map: "IDX_data_item_type")
   @@index([description], map: "IDX_description")
   @@index([site_id], map: "IDX_site_id")
@@ -770,6 +792,8 @@ model saved_list_entry {
   data_item_id        Int       @default(0)
   site_id             Int       @default(0)
   date_created        DateTime? @db.DateTime(0)
+
+  saved_list          saved_list @relation(fields: [saved_list_id], references: [saved_list_id], name: "SavedListEntries")
 
   @@index([data_item_id], map: "IDX_data_item_id")
   @@index([data_item_type], map: "IDX_data_item_type")
@@ -917,6 +941,7 @@ model user {
   joborder_owner            joborder[]          @relation("JobOrderOwnerUser")
   joborder_recruiter        joborder[]          @relation("JobOrderRecruiterUser")
   access                    access_level        @relation("AccessLevelUser", fields: [access_level], references: [access_level_id])
+  entered_activities        activity[]          @relation("ActivityEnteredByUser")
 }
 
 model user_login {
