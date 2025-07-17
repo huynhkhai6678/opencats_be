@@ -19,6 +19,11 @@ export class JobOrdersController {
     return this.jobOrdersService.findAll(query);
   }
 
+  @Get('get-selection')
+  findJoborderListSelection() {
+    return this.jobOrdersService.findJoborderListSelection();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.jobOrdersService.findOne(+id);

@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import * as md5 from 'md5';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { REQUEST } from '@nestjs/core';
+import Redis from 'ioredis';
 
 @Injectable()
 export class AuthService {
@@ -103,6 +104,23 @@ export class AuthService {
     return {
       message: 'Change Password successfully'
     }
+  }
+
+  async logout(): Promise<any> {
+    const [type, token] = this.request.headers.authorization?.split(' ') ?? [];
+    if (type !== 'Bearer' || !token) {
+      throw new Error('Invalid Authorization header format');
+    }
+
+    const payload = this.jwtService.decode(token);
+    const redis = new Redis();
+
+    const ttl = payload.exp - Math.floor(Date.now() / 1000);
+    if (ttl > 0) {
+      await redis.set(`blacklist:${token}`, '1', 'EX', ttl);
+    }
+
+    return { message: 'Logout successful' };
   }
 
   async createLoginActivity(createLoginActivityDto: any) {

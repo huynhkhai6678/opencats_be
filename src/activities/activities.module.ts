@@ -9,5 +9,6 @@ import { AuthModule } from 'src/auth/auth.module';
   ],
   controllers: [ActivitiesController],
   providers: [ActivitiesService],
+  exports: [ActivitiesService]
 })
 export class ActivitiesModule {}

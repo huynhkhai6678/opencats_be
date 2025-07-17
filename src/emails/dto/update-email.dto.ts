@@ -1,4 +1,11 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateEmailDto } from './create-email.dto';
+import { IsDefined, IsNumber, IsString } from "class-validator";
 
-export class UpdateEmailDto extends PartialType(CreateEmailDto) {}
+export class UpdateEmailDto {
+    @IsDefined()
+    @IsNumber()
+    disabled : number;
+
+    @IsDefined()
+    @IsString()
+    text : string;
+}

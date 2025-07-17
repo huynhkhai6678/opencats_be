@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import Redis from 'ioredis';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -14,7 +15,9 @@ export class AuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request: Request = context.switchToHttp().getRequest();
     const token = this.extractTokenFromHeader(request);
-    if (!token) {
+    const redis = new Redis();
+    const isBlacklisted = await redis.get(`blacklist:${token}`);
+    if (!token || isBlacklisted) {
       throw new UnauthorizedException();
     }
     try {

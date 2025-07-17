@@ -8,7 +8,7 @@ import { CompaniesModule } from './companies/companies.module';
 import { HistoriesModule } from './histories/histories.module';
 import { ContactsModule } from './contacts/contacts.module';
 import { JobOrdersModule } from './job-orders/job-orders.module';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CandidatesModule } from './candidates/candidates.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { ActivitiesModule } from './activities/activities.module';
@@ -18,9 +18,47 @@ import { LoginActivitiesModule } from './login-activities/login-activities.modul
 import { UsersModule } from './users/users.module';
 import { EmailsModule } from './emails/emails.module';
 import { CandidateJoborderModule } from './candidate-joborder/candidate-joborder.module';
+import { CalendarEventModule } from './calendar-event/calendar-event.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { KafkaProducerService } from './services/kafka-producer.service';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { EjsAdapter } from '@nestjs-modules/mailer/dist/adapters/ejs.adapter';
+import { join } from 'path';
+import { ScheduleModule } from '@nestjs/schedule';
+import { KafkaDelayService } from './services/kafka-delay.service';
+import { HeadhuntsModule } from './headhunts/headhunts.module';
+import * as fs from 'fs';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
+    MailerModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: async (config: ConfigService) => {
+        const templatePath = join(process.cwd(), 'templates', 'email')
+        return {
+          transport: {
+            host: config.get('MAIL_HOST'),
+            port: config.get('MAIL_PORT'),
+            auth: {
+              user: config.get('MAIL_USER'),
+              pass: config.get('MAIL_PASS'),
+            },
+          },
+          defaults: {
+            from: config.get('APP_NAME'),
+          },
+          template: {
+            dir: templatePath,
+            adapter: new EjsAdapter(),
+            options: {
+              strict: false,
+            },
+          },
+        };
+      },
+      inject: [ConfigService],
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -39,9 +77,12 @@ import { CandidateJoborderModule } from './candidate-joborder/candidate-joborder
     LoginActivitiesModule,
     UsersModule,
     EmailsModule,
-    CandidateJoborderModule
+    CandidateJoborderModule,
+    CalendarEventModule,
+    DashboardModule,
+    HeadhuntsModule
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, KafkaProducerService, KafkaDelayService],
 })
 export class AppModule {}

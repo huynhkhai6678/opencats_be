@@ -1,5 +1,4 @@
 import { Inject, Injectable, NotFoundException, Res } from '@nestjs/common';
-import { UpdateAttachmentDto } from './dto/update-attachment.dto';
 import { PrismaService } from '../prisma/prisma.service';
 import { REQUEST } from '@nestjs/core';
 import { createHash } from 'crypto';

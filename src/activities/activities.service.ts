@@ -13,8 +13,17 @@ export class ActivitiesService {
     @Inject(REQUEST) private readonly request: any,
   ) {}
 
-  create(createActivityDto: CreateActivityDto) {
-    return 'This action adds a new activity';
+  async create(createActivityDto: CreateActivityDto) {
+    const user = this.request.user;
+    return await this.prisma.activity.create({
+      data : {
+        ...createActivityDto,
+        site_id: 1,
+        entered_by: user.user_id,
+        date_created: new Date(),
+        date_modified: new Date()
+      }
+    })
   }
 
   async findAll(query: any) {
@@ -36,7 +45,7 @@ export class ActivitiesService {
     const allowedSortOrders = ['asc', 'desc'];
 
     // Default to 'company_id' and 'asc' if invalid input
-    const safeSortField = allowedSortFields.includes(sortField) ? sortField : 'candidate_id';
+    const safeSortField = allowedSortFields.includes(sortField) ? sortField : 'activity.date_modified';
     const safeSortOrder = allowedSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toLowerCase() : 'asc';
 
     const conditions : any[] = [];
@@ -109,6 +118,21 @@ export class ActivitiesService {
     const [{ total }] = await this.prisma.$queryRaw<{ total: number }[]>(Prisma.sql`
       SELECT COUNT(*) AS total
       FROM activity
+      LEFT JOIN activity_type
+        ON activity_type.activity_type_id = activity.type
+      LEFT JOIN joborder
+        ON activity.joborder_id = joborder.joborder_id
+      LEFT JOIN company
+        ON company.company_id = joborder.company_id
+      LEFT JOIN user
+        ON activity.entered_by = user.user_id
+      LEFT JOIN candidate
+        ON
+        (
+          candidate.candidate_id = activity.data_item_id
+          AND activity.data_item_type = 100
+        )
+      ${whereClause}
     `);
         
     return { data, total: Number(total) };

@@ -105,6 +105,9 @@ model calendar_event {
 
   @@index([site_id, data_item_type, data_item_id], map: "IDX_site_data_item_type_id")
   @@index([site_id, date], map: "IDX_site_id_date")
+
+  entered_user      user?                       @relation("EventEnteredUser", fields: [entered_by], references: [user_id])
+  type_info         calendar_event_type?        @relation("EventTypeInfor", fields: [type], references: [calendar_event_type_id])
 }
 
 model calendar_event_type {
@@ -113,6 +116,8 @@ model calendar_event_type {
   icon_image             String @default("") @db.VarChar(128)
 
   @@index([short_description], map: "IDX_short_description")
+
+  calendar_event         calendar_event[]      @relation("EventTypeInfor")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -177,7 +182,7 @@ model candidate {
   @@index([site_id, email1(length: 8), email2(length: 8)], map: "IDX_site_id_email_1_2")
 
   candidate_joborders   candidate_joborder[]  @relation("CandidateToJobOrders")
-  entered_user          external_users        @relation("EnteredByUser", fields: [entered_by], references: [id])
+  entered_user          external_users?       @relation("EnteredByUser", fields: [entered_by], references: [id])
   owner_user            external_users?       @relation("OwnerUser", fields: [owner], references: [id])
 }
 
@@ -504,13 +509,15 @@ model extension_statistics {
 
 model external_user_profile {
   id                   Int      @id @default(autoincrement())
-  user_id              Int
+  user_id              Int      @unique
   job_title            String   @db.VarChar(255)
   citizen_id           String   @db.VarChar(50)
   citizen_issued_date  DateTime @db.Date
   citizen_issued_place String   @db.VarChar(255)
   beneficiary_bank     String   @db.VarChar(255)
   bank_account         String   @db.VarChar(50)
+
+  external_user       external_users    @relation("ExternalUserProfile", fields: [user_id], references: [id]) 
 }
 
 model external_users {
@@ -528,6 +535,7 @@ model external_users {
 
   entered_candidates        candidate[]         @relation("EnteredByUser")
   owned_candidates          candidate[]         @relation("OwnerUser")
+  profile                   external_user_profile?    @relation("ExternalUserProfile") 
 }
 
 model extra_field {
@@ -942,6 +950,7 @@ model user {
   joborder_recruiter        joborder[]          @relation("JobOrderRecruiterUser")
   access                    access_level        @relation("AccessLevelUser", fields: [access_level], references: [access_level_id])
   entered_activities        activity[]          @relation("ActivityEnteredByUser")
+  calendar_event            calendar_event[]    @relation("EventEnteredUser")
 }
 
 model user_login {

@@ -1,16 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseIntPipe } from '@nestjs/common';
+import { Controller, Get, Body, Patch, Param, Delete, Query, ParseIntPipe, UseGuards, ValidationPipe } from '@nestjs/common';
 import { EmailsService } from './emails.service';
-import { CreateEmailDto } from './dto/create-email.dto';
+import { AuthGuard } from '../guards/auth.guard';
 import { UpdateEmailDto } from './dto/update-email.dto';
 
+@UseGuards(AuthGuard)
 @Controller('emails')
 export class EmailsController {
   constructor(private readonly emailsService: EmailsService) {}
-
-  @Post()
-  create(@Body() createEmailDto: CreateEmailDto) {
-    return this.emailsService.create(createEmailDto);
-  }
 
   @Get()
   findAll(@Query() query : any) {
@@ -23,7 +19,7 @@ export class EmailsController {
   }
 
   @Patch(':id')
-  update(@Param('id', ParseIntPipe) id: string, @Body() updateEmailDto: UpdateEmailDto) {
+  update(@Param('id', ParseIntPipe) id: string, @Body(ValidationPipe) updateEmailDto: UpdateEmailDto) {
     return this.emailsService.update(+id, updateEmailDto);
   }
 

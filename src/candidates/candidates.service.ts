@@ -8,7 +8,6 @@ import { CandidateSourceService } from '../services/candidate-source.service';
 import { AttachmentsService } from '../attachments/attachments.service';
 import { CONSTANTS } from '../constants';
 import * as md5 from 'md5';
-import { CONTAINS } from 'class-validator';
 
 @Injectable()
 export class CandidatesService {
@@ -157,7 +156,7 @@ export class CandidatesService {
   }
 
   async remove(id: number) {
-     const candidate = await this.prisma.candidate.findFirst({
+    const candidate = await this.prisma.candidate.findFirst({
       where: {
         candidate_id: id,
       },

@@ -139,6 +139,25 @@ export class JobOrdersService {
     const [{ total }] = await this.prisma.$queryRaw<{ total: number }[]>(Prisma.sql`
       SELECT COUNT(*) AS total
       FROM joborder
+      LEFT JOIN company
+          ON joborder.company_id = company.company_id
+      LEFT JOIN contact
+          ON joborder.contact_id = contact.contact_id
+      LEFT JOIN company_department
+          ON joborder.company_department_id = company_department.company_department_id
+      LEFT JOIN candidate_joborder
+          ON joborder.joborder_id = candidate_joborder.joborder_id
+      LEFT JOIN user AS recruiter_user
+          ON joborder.recruiter = recruiter_user.user_id
+      LEFT JOIN user AS owner_user
+          ON joborder.owner = owner_user.user_id
+      LEFT JOIN attachment
+          ON
+          (
+              joborder.joborder_id = attachment.data_item_id
+              AND attachment.data_item_type = 400
+          )
+      ${whereClause}
     `);
 
     data.forEach(item => {
@@ -335,6 +354,24 @@ export class JobOrdersService {
 
     return {
       data
+    }
+  }
+
+  async findJoborderListSelection() {
+    const data = await this.prisma.joborder.findMany({
+      select : {
+        joborder_id: true,
+        title: true,
+        company : {
+          select : {
+            name: true
+          }
+        }
+      }
+    });
+
+    return {
+      data,
     }
   }
 }

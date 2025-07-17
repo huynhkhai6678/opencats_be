@@ -3,11 +3,28 @@ import { AppModule } from './app.module';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
+import { MicroserviceOptions, Transport } from '@nestjs/microservices';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   app.enableCors();
+
+  app.connectMicroservice<MicroserviceOptions>({
+    transport: Transport.KAFKA,
+    options: {
+      client: {
+        clientId: 'nestjs-kafka-client',
+        brokers: ['localhost:9092'],
+      },
+      consumer: {
+        groupId: 'nestjs-group',
+      },
+      run: {
+        autoCommit: false
+      }
+    },
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -21,6 +38,7 @@ async function bootstrap() {
       prefix: '/public/',
   });
 
+  await app.startAllMicroservices();
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

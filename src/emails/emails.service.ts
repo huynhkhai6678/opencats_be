@@ -1,9 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { CreateEmailDto } from './dto/create-email.dto';
-import { UpdateEmailDto } from './dto/update-email.dto';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from 'generated/prisma';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { REQUEST } from '@nestjs/core';
+import { UpdateEmailDto } from './dto/update-email.dto';
 
 @Injectable()
 export class EmailsService {
@@ -11,11 +10,6 @@ export class EmailsService {
     private readonly prisma: PrismaService,
     @Inject(REQUEST) private readonly request: any,
   ) {}
-
-
-  create(createEmailDto: CreateEmailDto) {
-    return 'This action adds a new email';
-  }
 
   async findAll(query: any) {
     const {
@@ -30,11 +24,11 @@ export class EmailsService {
     const offset = page * size;
     const limit = size;
 
-    const allowedSortFields = ['title', 'last_name', 'tag'];
+    const allowedSortFields = ['title', 'text', 'disabled'];
     const allowedSortOrders = ['asc', 'desc'];
 
-    const safeSortField = allowedSortFields.includes(sortField) ? sortField : 'email_template_id';
-    const safeSortOrder = allowedSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toLowerCase() : 'asc';
+    const safeSortField = allowedSortFields.includes(sortField) ? sortField : 'disabled';
+    const safeSortOrder = allowedSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toLowerCase() : 'desc';
 
     const whereClause = filter
     ? Prisma.sql` WHERE (
@@ -60,15 +54,58 @@ export class EmailsService {
     return { data, total: Number(total) };
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} email`;
+  async findOne(id: number) {
+    return {
+      data : await this.prisma.email_template.findFirst({
+        where : {
+          email_template_id : id
+        }
+      })
+    };
   }
 
-  update(id: number, updateEmailDto: UpdateEmailDto) {
-    return `This action updates a #${id} email`;
+  async update(id: number, updateEmailDto: UpdateEmailDto) {
+    const emailTemplate = await this.prisma.email_template.findFirst({
+      where: {
+        email_template_id: id,
+      },
+    })
+
+    if (!emailTemplate) {
+      throw new NotFoundException('This Email template not existed');
+    }
+
+    await this.prisma.email_template.update({
+      where : {
+        email_template_id: id
+      },
+      data : updateEmailDto
+    });
+
+    return {
+      message : 'Update email template Successfully'
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} email`;
+  async remove(id: number) {
+    const emailTemplate = await this.prisma.email_template.findFirst({
+      where: {
+        email_template_id: id,
+      },
+    })
+
+    if (!emailTemplate) {
+      throw new NotFoundException('This joborder not existed');
+    }
+
+    await this.prisma.email_template.delete({
+      where : {
+        email_template_id: id
+      }
+    });
+
+    return {
+      message : 'Delete email template Successfully'
+    }
   }
 }
