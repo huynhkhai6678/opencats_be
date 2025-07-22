@@ -3,6 +3,7 @@ import { ListsService } from './lists.service';
 import { CreateListDto } from './dto/create-list.dto';
 import { UpdateListDto } from './dto/update-list.dto';
 import { AuthGuard } from '../guards/auth.guard';
+import { SendEmailDto } from './dto/send-email.dto';
 
 @UseGuards(AuthGuard)
 @Controller('lists')
@@ -12,6 +13,11 @@ export class ListsController {
   @Post()
   create(@Body(ValidationPipe) createListDto: CreateListDto) {
     return this.listsService.create(createListDto);
+  }
+
+  @Post('send-email')
+  sendEmail(@Body(ValidationPipe) sendEmailDto: SendEmailDto) {
+    return this.listsService.sendEmail(sendEmailDto);
   }
 
   @Get()
@@ -32,6 +38,11 @@ export class ListsController {
   @Get(':id/details')
   findDetail(@Param('id', ParseIntPipe) id: string, @Query() query : any) {
     return this.listsService.findDetail(+id, query);
+  }
+
+  @Get(':id/email')
+  findEmailData(@Param('id', ParseIntPipe) id: string, @Query('type') type: string) {
+    return this.listsService.findEmailData(+id, type);
   }
 
   @Patch(':id')

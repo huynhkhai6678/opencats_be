@@ -27,6 +27,7 @@ import { join } from 'path';
 import { ScheduleModule } from '@nestjs/schedule';
 import { KafkaDelayService } from './services/kafka-delay.service';
 import { HeadhuntsModule } from './headhunts/headhunts.module';
+import { ReportsModule } from './reports/reports.module';
 import * as fs from 'fs';
 
 @Module({
@@ -80,7 +81,8 @@ import * as fs from 'fs';
     CandidateJoborderModule,
     CalendarEventModule,
     DashboardModule,
-    HeadhuntsModule
+    HeadhuntsModule,
+    ReportsModule
   ],
   controllers: [AppController],
   providers: [AppService, KafkaProducerService, KafkaDelayService],

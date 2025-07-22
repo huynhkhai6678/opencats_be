@@ -198,7 +198,34 @@ export class HeadhuntsService {
       message: 'Change verified successfully'
     };
   }
-  
+
+  async findKpi(month : number) {
+    const users = await this.prisma.external_users.findMany({
+      where: {
+        is_employee: 1
+      },
+      select: {
+        name: true,
+        id: true,
+      }
+    });
+
+    const data : any[] = [];
+    for (let user of users) {
+      const kpi = await this.getKpis(user, month);
+      const totalScore = kpi.offered * 50 + kpi.submitted * 0.5 + kpi.interviewing * 0.5 + kpi.client_declined * 4 + kpi.contract * 10;
+      data.push({
+        ...user,
+        ...kpi,
+        total_score: totalScore,
+        target: 100
+      });
+    }
+
+    return {
+      data
+    };
+  }
 
   update(id: number, updateHeadhuntDto: UpdateHeadhuntDto) {
     return `This action updates a #${id} headhunt`;
@@ -206,5 +233,42 @@ export class HeadhuntsService {
 
   remove(id: number) {
     return `This action removes a #${id} headhunt`;
+  }
+
+  async getKpis(user: any, month: number) {
+    const owner = await this.prisma.user.findFirst({
+      where : {
+        email : user.email
+      }
+    });
+
+    const result = await this.prisma.$queryRaw<any>`
+      SELECT 
+        COUNT(DISTINCT cj.candidate_id) AS new_cv,
+        COUNT(c.company_id) AS contract,
+        COUNT(CASE WHEN cj.status = 600 THEN 1 END) AS offered,
+        COUNT(CASE WHEN cj.status = 500 THEN 1 END) AS submitted,
+        COUNT(CASE WHEN cj.status = 400 THEN 1 END) AS interviewing,
+        COUNT(CASE WHEN cj.status = 700 THEN 1 END) AS client_declined
+      FROM candidate_joborder cj
+      LEFT JOIN company c ON c.owner = ${owner?.user_id}
+      WHERE cj.headhunt_id = ${user.id}
+      AND (
+        (MONTH(cj.date_created) = MONTH(DATE_SUB(NOW(), INTERVAL ${month} MONTH)) AND YEAR(cj.date_created) = YEAR(DATE_SUB(NOW(), INTERVAL ${month} MONTH))) OR
+        (MONTH(cj.offered_date) = MONTH(DATE_SUB(NOW(), INTERVAL ${month} MONTH)) AND YEAR(cj.offered_date) = YEAR(DATE_SUB(NOW(), INTERVAL ${month} MONTH))) OR
+        (MONTH(cj.submitted_date) = MONTH(DATE_SUB(NOW(), INTERVAL ${month} MONTH)) AND YEAR(cj.submitted_date) = YEAR(DATE_SUB(NOW(), INTERVAL ${month} MONTH))) OR
+        (MONTH(cj.interviewing_date) = MONTH(DATE_SUB(NOW(), INTERVAL ${month} MONTH)) AND YEAR(cj.interviewing_date) = YEAR(DATE_SUB(NOW(), INTERVAL ${month} MONTH))) OR
+        (MONTH(cj.client_declined_date) = MONTH(DATE_SUB(NOW(), INTERVAL ${month} MONTH)) AND YEAR(cj.client_declined_date) = YEAR(DATE_SUB(NOW(), INTERVAL ${month} MONTH)))
+      );
+    `;
+
+    return {
+      new_cv: result[0]?.new_cv || 0,
+      contract: result[0]?.contract || 0,
+      offered: result[0]?.offered || 0,
+      submitted: result[0]?.submitted || 0,
+      interviewing: result[0]?.interviewing || 0,
+      client_declined: result[0]?.client_declined || 0,
+    };
   }
 }

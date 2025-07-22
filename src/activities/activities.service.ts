@@ -14,10 +14,12 @@ export class ActivitiesService {
   ) {}
 
   async create(createActivityDto: CreateActivityDto) {
+    console.log(createActivityDto);
     const user = this.request.user;
     return await this.prisma.activity.create({
       data : {
         ...createActivityDto,
+        joborder_id : createActivityDto.joborder_id || -1,
         site_id: 1,
         entered_by: user.user_id,
         date_created: new Date(),
@@ -104,12 +106,8 @@ export class ActivitiesService {
         ON company.company_id = joborder.company_id
       LEFT JOIN user
         ON activity.entered_by = user.user_id
-      LEFT JOIN candidate
-        ON
-        (
-          candidate.candidate_id = activity.data_item_id
-          AND activity.data_item_type = 100
-        )
+      INNER JOIN candidate
+        ON candidate.candidate_id = activity.data_item_id
       ${whereClause}
       ORDER BY ${Prisma.raw(safeSortField)} ${Prisma.raw(safeSortOrder)}
       LIMIT ${limit} OFFSET ${offset};
@@ -127,11 +125,110 @@ export class ActivitiesService {
       LEFT JOIN user
         ON activity.entered_by = user.user_id
       LEFT JOIN candidate
-        ON
-        (
-          candidate.candidate_id = activity.data_item_id
-          AND activity.data_item_type = 100
-        )
+        ON candidate.candidate_id = activity.data_item_id
+      ${whereClause}
+    `);
+        
+    return { data, total: Number(total) };
+  }
+
+  async findAll2(query: any) {
+    const {
+      sortField = 'company_id',
+      sortOrder = 'asc',
+      filter,
+      startDate,
+      endDate
+    } = query;
+      
+    const page = Number(query.page) || 0;
+    const size = Number(query.size) || 10;
+
+    const offset = page * size;
+    const limit = size;
+
+    const allowedSortFields = ['createdDate', 'candidateName', 'joborderName', 'enterBy', 'notes'];
+    const allowedSortOrders = ['asc', 'desc'];
+
+    // Default to 'company_id' and 'asc' if invalid input
+    const safeSortField = allowedSortFields.includes(sortField) ? sortField : 'activity.date_modified';
+    const safeSortOrder = allowedSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toLowerCase() : 'asc';
+
+    const conditions : any[] = [];
+    if (filter) {
+      conditions.push(Prisma.sql`
+        (candidate.full_name LIKE ${'%' + filter + '%'}
+        OR joborder.title LIKE ${'%' + filter + '%'}
+        OR company.name LIKE ${'%' + filter + '%'})
+      `);
+    }
+
+    if (startDate || endDate) {
+      conditions.push(Prisma.sql`
+        ${startDate ? Prisma.sql`activity.date_modified >= ${startDate}` : Prisma.empty}
+        ${startDate && endDate ? Prisma.sql`AND` : Prisma.empty}
+        ${endDate ? Prisma.sql`activity.date_modified <= ${endDate}` : Prisma.empty}
+      `);
+    }
+
+    // Only add the WHERE clause if conditions are present
+    const whereClause = conditions.length > 0 
+      ? Prisma.sql`WHERE ${Prisma.join(conditions, ` AND `)}`
+      : Prisma.empty;
+  
+    const data = await this.prisma.$queryRaw<
+      Array<{
+        createdDate: string;
+        notes: string;
+        enterBy: string;
+        activityType: string;
+        candidateName: string;
+        candidateId: number;
+        companyName: string;
+        companyId: number;
+        joborderName: string;
+        joborderId: number;
+      }>
+    >(Prisma.sql`
+      SELECT
+        activity.date_created AS createdDate,
+        activity.notes AS notes,
+        activity_type.short_description AS activityType,
+        candidate.full_name AS candidateName,
+        activity.data_item_id AS candidateId,
+        company.company_id AS companyId,
+        joborder.title AS joborderName,
+        joborder.joborder_id AS joborderId,
+        CONCAT(user.first_name, ' ', user.last_name) AS enterBy
+      FROM activity
+      LEFT JOIN activity_type
+        ON activity_type.activity_type_id = activity.type
+      LEFT JOIN joborder
+        ON activity.joborder_id = joborder.joborder_id
+      LEFT JOIN company
+        ON company.company_id = joborder.company_id
+      LEFT JOIN user
+        ON activity.entered_by = user.user_id
+      INNER JOIN candidate
+        ON candidate.candidate_id = activity.data_item_id
+      ${whereClause}
+      ORDER BY ${Prisma.raw(safeSortField)} ${Prisma.raw(safeSortOrder)}
+      LIMIT ${limit} OFFSET ${offset};
+    `);
+
+    const [{ total }] = await this.prisma.$queryRaw<{ total: number }[]>(Prisma.sql`
+      SELECT COUNT(*) AS total
+      FROM activity
+      LEFT JOIN activity_type
+        ON activity_type.activity_type_id = activity.type
+      LEFT JOIN joborder
+        ON activity.joborder_id = joborder.joborder_id
+      LEFT JOIN company
+        ON company.company_id = joborder.company_id
+      LEFT JOIN user
+        ON activity.entered_by = user.user_id
+      LEFT JOIN candidate
+        ON candidate.candidate_id = activity.data_item_id
       ${whereClause}
     `);
         

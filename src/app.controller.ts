@@ -23,12 +23,22 @@ export class AppController {
     const offset = originalMessage.offset;
 
     try { 
-      await this.mailerService.sendMail({
-        to : message.data.to,
-        subject: message.data.subject,
-        template: message.data.template,
-        context: message.data.context
-      });
+
+      if (message.data.template) {
+        // Send email with template
+        await this.mailerService.sendMail({
+          to : message.data.to,
+          subject: message.data.subject,
+          template: message.data.template,
+          context: message.data.context
+        });
+      } else {
+        await this.mailerService.sendMail({
+          to : message.data.to,
+          subject: message.data.subject,
+          html: message.data.html
+        });
+      }
 
       await consumer.commitOffsets([
         {
@@ -39,6 +49,7 @@ export class AppController {
       ]);
 
     } catch (error) {
+      message.error = error;
       await this.kafkaProducer.sendMessage('dead_letter_email', message);
       await consumer.commitOffsets([
         {
@@ -48,15 +59,5 @@ export class AppController {
         },
       ]);
     }
-  }
-
-  @Get('/send')
-  async sendMessage(@Query('msg') msg: string) {
-   await this.delayService.sendEmail({
-      to: 'trabidao6678@gmail.com',
-      subject: 'Hello!',
-      template: 'base',
-      context: { name: 'John', url: 'https://yourapp.com/verify' }
-    }, 60 * 1000);
   }
 }

@@ -26,4 +26,9 @@ export class DashboardController {
   findUpcommingEvent() {
     return this.dashboardService.findUpcommingEvent();
   }
+
+  @Get('hiring-overview')
+  findHiringOverview() {
+    return this.dashboardService.findHiringOverview();
+  }
 }

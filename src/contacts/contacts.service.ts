@@ -7,6 +7,7 @@ import { company, contact, Prisma } from 'generated/prisma';
 import { CONSTANTS, JOBORDER_SELECT_QUERY_BODY } from '../constants';
 import { CompanyDepartmentService } from '../services/company-department.service';
 import * as md5 from 'md5';
+import { formatDate } from '../utils/format';
 
 @Injectable()
 export class ContactsService {
@@ -199,7 +200,7 @@ export class ContactsService {
 
   async findContactJobOrder(id: number) {
     const user = this.request.user;
-    let whereClause = Prisma.sql`WHERE joborder.company_id = ${id}`;
+    let whereClause = Prisma.sql`WHERE joborder.contact_id = ${id}`;
     if (user.access_level !== CONSTANTS.ACCESS_LEVEL_ROOT) {
       whereClause = Prisma.sql`WHERE joborder.contact_id = ${id} AND joborder.owner = ${user.user_id}`;
     }
@@ -310,6 +311,79 @@ export class ContactsService {
     return {
       reports, 
       departments
+    }
+  }
+
+  async findContactToExport() {
+    const data = await this.prisma.contact.findMany({
+      include:{
+        owner_user : {
+          select: {
+            first_name: true,
+            last_name: true
+          }
+        },
+        department: {
+          select: {
+            name: true
+          }
+        },
+        company: {
+          select: {
+            name: true,
+            company_id: true
+          }
+        }
+      }
+    });
+
+    return data.map(item => ({
+      ...item,
+      owner_name: item.owner_user ? `${item.owner_user.first_name} ${item.owner_user.last_name}` : '',
+      company_name: item.company ? `${item.company.name}` : '',
+      department_name: item.department ? `${item.department.name}` : '',
+      date_created: formatDate(item.date_created),
+      date_modified: formatDate(item.date_modified),
+    }));
+  }
+
+  async findContactActivities(id: number) {
+    const data = await this.prisma.activity.findMany({
+      where : {
+        data_item_id: id,
+        data_item_type: CONSTANTS.DATA_ITEM_CONTACT
+      },
+      select : {
+        activity_id: true,
+        date_created : true,
+        notes: true,
+        type_info : {
+          select : {
+            short_description: true
+          }
+        },
+        joborder : {
+          select : {
+            title: true,
+            company_id: true,
+            company : {
+              select : {
+                name: true
+              }
+            }
+          }
+        },
+        entered_user : {
+          select : {
+            first_name: true,
+            last_name: true
+          }
+        }
+      }
+    });
+
+    return {
+      data,
     }
   }
 }

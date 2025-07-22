@@ -61,6 +61,11 @@ export class ListEntriesService {
     const [{ total }] = await this.prisma.$queryRaw<{ total: number }[]>(Prisma.sql`
       SELECT COUNT(*) AS total
       FROM saved_list
+      LEFT JOIN saved_list_entry ON saved_list.saved_list_id = saved_list_entry.saved_list_id
+      LEFT JOIN candidate ON candidate.candidate_id = saved_list_entry.data_item_id
+      LEFT JOIN user AS owner_user ON saved_list.created_by = owner_user.user_id
+      WHERE saved_list.saved_list_id = ${id}
+      ${whereClause}
     `);
     
     return { data, total: Number(total) };

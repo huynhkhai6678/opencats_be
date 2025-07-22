@@ -19,5 +19,5 @@ export class UpdateRatingDto {
 
     @IsDefined()
     @IsString()
-    activity_notes: number;
+    activity_notes: string;
 }

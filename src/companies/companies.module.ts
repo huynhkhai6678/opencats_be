@@ -3,6 +3,7 @@ import { CompaniesService } from './companies.service';
 import { CompaniesController } from './companies.controller';
 import { AuthModule } from '../auth/auth.module';
 import { HistoriesModule } from '../histories/histories.module';
+import { ExcelService } from '../services/excel.service';
 
 @Module({
   imports: [
@@ -10,6 +11,6 @@ import { HistoriesModule } from '../histories/histories.module';
     HistoriesModule
   ],
   controllers: [CompaniesController],
-  providers: [CompaniesService],
+  providers: [CompaniesService, ExcelService],
 })
 export class CompaniesModule {}

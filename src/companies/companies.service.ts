@@ -7,6 +7,7 @@ import { REQUEST } from '@nestjs/core';
 import { HistoriesService } from '../histories/histories.service';
 import { CONSTANTS, JOBORDER_SELECT_QUERY_BODY } from '../constants';
 import * as md5 from 'md5';
+import { formatDate } from 'src/utils/format';
 
 @Injectable()
 export class CompaniesService {
@@ -42,8 +43,11 @@ export class CompaniesService {
       sortField = 'company_id',
       sortOrder = 'asc',
       filter,
+      isMyCompany = query.is_my_company,
+      isHotCompany = query.is_hot_company
     } = query;
 
+    const user = this.request.user;
     const page = Number(query.page) || 0;
     const size = Number(query.size) || 10;
 
@@ -57,9 +61,24 @@ export class CompaniesService {
     const safeSortField = allowedSortFields.includes(sortField) ? sortField : 'company_id';
     const safeSortOrder = allowedSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toLowerCase() : 'asc';
 
-    const whereClause = filter
-    ? Prisma.sql`WHERE (company.name LIKE ${'%' + filter + '%'} OR company.key_technologies LIKE ${'%' + filter + '%'})`
-    : Prisma.empty;
+    let whereClause = Prisma.empty;
+    let conditions : any[] = [];
+    if (filter) {
+      conditions.push(Prisma.sql`(company.name LIKE ${'%' + filter + '%'} OR company.key_technologies LIKE ${'%' + filter + '%'})`);
+    }
+
+    if (isMyCompany !== undefined && isMyCompany !== 'false') {
+      conditions.push(Prisma.sql`company.owner = ${user.user_id}`);
+    }
+
+    if (isHotCompany !== undefined && isHotCompany !== 'false') {
+      conditions.push(Prisma.sql`company.is_hot = 1`);
+    }
+
+    // Combine all conditions using AND
+    if (conditions.length > 0) {
+      whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, ` AND `)}`;
+    }
 
     const data = await this.prisma.$queryRaw<
       Array<{
@@ -108,6 +127,7 @@ export class CompaniesService {
     const [{ total }] = await this.prisma.$queryRaw<{ total: number }[]>(Prisma.sql`
       SELECT COUNT(*) AS total
       FROM company
+      ${whereClause}
     `);
 
     data.forEach(item => {
@@ -244,14 +264,24 @@ export class CompaniesService {
       data,
     }
   }
+  
+  async findCompanyToExport() {
+    const data = await this.prisma.company.findMany({
+      include:{
+        owner_user : {
+          select: {
+            first_name: true,
+            last_name: true
+          }
+        }
+      }
+    });
 
-  formatDate(date: Date): string {
-    if (!date) return '';
-    const d = new Date(date);
-    return `${this.pad(d.getMonth() + 1)}-${this.pad(d.getDate())}-${String(d.getFullYear()).slice(2)}`;
-  }
-
-  pad(n: number) {
-    return n < 10 ? `0${n}` : `${n}`;
+    return data.map(item => ({
+      ...item,
+      owner_name: item.owner_user ? `${item.owner_user.first_name} ${item.owner_user.last_name}` : '',
+      date_created: formatDate(item.date_created),
+      date_modified: formatDate(item.date_modified),
+    }));
   }
 }

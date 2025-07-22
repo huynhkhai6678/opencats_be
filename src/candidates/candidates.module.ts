@@ -5,6 +5,7 @@ import { AuthModule } from '../auth/auth.module';
 import { HistoriesModule } from '../histories/histories.module';
 import { CandidateSourceService } from '../services/candidate-source.service';
 import { AttachmentsModule } from '../attachments/attachments.module';
+import { ExcelService } from '../services/excel.service';
 
 @Module({
   imports: [
@@ -13,6 +14,6 @@ import { AttachmentsModule } from '../attachments/attachments.module';
     HistoriesModule
   ],
   controllers: [CandidatesController],
-  providers: [CandidatesService, CandidateSourceService],
+  providers: [CandidatesService, CandidateSourceService, ExcelService],
 })
 export class CandidatesModule {}

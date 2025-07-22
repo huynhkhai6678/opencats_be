@@ -40,13 +40,16 @@ export class JobOrdersService {
 
   async findAll(query : any) {
     const {
-      sortField = 'company_id',
+      sortField = 'joborder_id',
       sortOrder = 'asc',
       filter,
+      isMyJobOrder = query.is_my_company,
+      isHotJobOrder = query.is_hot_company
     } = query;
 
+    const user = this.request.user;
     const page = Number(query.page) || 0;
-    const size = Number(query.size) || 10;
+    const size = Number(query.size) || 15;
 
     const offset = page * size;
     const limit = size;
@@ -58,9 +61,25 @@ export class JobOrdersService {
     const safeSortField = allowedSortFields.includes(sortField) ? sortField : 'joborder.joborder_id';
     const safeSortOrder = allowedSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toLowerCase() : 'asc';
 
-    const whereClause = filter
-    ? Prisma.sql`WHERE (company.name LIKE ${'%' + filter + '%'} OR joborder.title LIKE ${'%' + filter + '%'})`
-    : Prisma.empty;
+    let whereClause = Prisma.empty;
+    let conditions : any[] = [];
+    if (filter) {
+      conditions.push(Prisma.sql`WHERE (joborder.title LIKE ${'%' + filter + '%'} 
+      OR company.name LIKE ${'%' + filter + '%'})`);
+    }
+
+    if (isMyJobOrder !== undefined && isMyJobOrder !== 'false') {
+      conditions.push(Prisma.sql`joborder.owner = ${user.user_id}`);
+    }
+
+    if (isHotJobOrder !== undefined && isHotJobOrder !== 'false') {
+      conditions.push(Prisma.sql`joborder.is_hot = 1`);
+    }
+
+    // Combine all conditions using AND
+    if (conditions.length > 0) {
+      whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, ` AND `)}`;
+    }
 
     const data = await this.prisma.$queryRaw<
       Array<any>
@@ -139,24 +158,7 @@ export class JobOrdersService {
     const [{ total }] = await this.prisma.$queryRaw<{ total: number }[]>(Prisma.sql`
       SELECT COUNT(*) AS total
       FROM joborder
-      LEFT JOIN company
-          ON joborder.company_id = company.company_id
-      LEFT JOIN contact
-          ON joborder.contact_id = contact.contact_id
-      LEFT JOIN company_department
-          ON joborder.company_department_id = company_department.company_department_id
-      LEFT JOIN candidate_joborder
-          ON joborder.joborder_id = candidate_joborder.joborder_id
-      LEFT JOIN user AS recruiter_user
-          ON joborder.recruiter = recruiter_user.user_id
-      LEFT JOIN user AS owner_user
-          ON joborder.owner = owner_user.user_id
-      LEFT JOIN attachment
-          ON
-          (
-              joborder.joborder_id = attachment.data_item_id
-              AND attachment.data_item_type = 400
-          )
+      LEFT JOIN company ON joborder.company_id = company.company_id
       ${whereClause}
     `);
 
@@ -373,5 +375,74 @@ export class JobOrdersService {
     return {
       data,
     }
+  }
+
+  async findJobordeToExport() {
+   const data = await this.prisma.$queryRaw<
+      Array<any>
+    >(Prisma.sql`
+      SELECT
+        joborder.joborder_id AS joborder_id,
+        joborder.title AS title,
+        joborder.type AS type,
+        joborder.openings AS openings,
+        joborder.duration AS duration,
+        joborder.city AS city,
+        joborder.state AS state,
+        joborder.status AS status,
+        joborder.company_department_id AS department_id,
+        joborder.rate_max AS rate_max,
+        joborder.salary AS salary,
+        joborder.salary AS notes,
+        company.company_id AS company_id,
+        company.name AS company_name,
+        company_department.name AS department_name,
+        contact.contact_id AS contact_id,
+        CONCAT(contact.first_name, ' ', contact.last_name) AS contact_name,
+        contact.phone_work AS contact_phone,
+        CONCAT(recruiter_user.first_name, ' ', recruiter_user.last_name) AS recruiter,
+        CONCAT(owner_user.first_name, ' ', owner_user.last_name) AS owner,
+        joborder.date_created AS date_created,
+        joborder.date_modified AS date_modified,
+        DATEDIFF(
+            NOW(), joborder.date_created
+        ) AS daysOld,
+        COUNT(
+          candidate_joborder.joborder_id
+        ) AS pipeline,
+        (
+          SELECT
+              COUNT(*)
+          FROM
+              candidate_joborder_status_history
+          WHERE
+              joborder_id = joborder.joborder_id
+          AND
+            status_to = 400
+        ) AS submitted
+      FROM
+          joborder
+      LEFT JOIN company
+          ON joborder.company_id = company.company_id
+      LEFT JOIN contact
+          ON joborder.contact_id = contact.contact_id
+      LEFT JOIN company_department
+          ON joborder.company_department_id = company_department.company_department_id
+      LEFT JOIN candidate_joborder
+          ON joborder.joborder_id = candidate_joborder.joborder_id
+      LEFT JOIN user AS recruiter_user
+          ON joborder.recruiter = recruiter_user.user_id
+      LEFT JOIN user AS owner_user
+          ON joborder.owner = owner_user.user_id
+      GROUP BY joborder.joborder_id;
+    `);
+
+    data.forEach(item => {
+      item.pipeline = Number(item.pipeline);
+      item.submitted = Number(item.submitted);
+      item.daysOld = Number(item.daysOld);
+    });
+
+    return data;
   }
 }

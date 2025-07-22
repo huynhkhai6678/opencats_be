@@ -52,8 +52,10 @@ export class CandidatesService {
       sortField = 'company_id',
       sortOrder = 'asc',
       filter,
+      isMyCompany = query.is_my_company,
+      isHotCompany = query.is_hot_company
     } = query;
-    
+    const user = this.request.user;
     const page = Number(query.page) || 0;
     const size = Number(query.size) || 10;
 
@@ -67,11 +69,26 @@ export class CandidatesService {
     const safeSortField = allowedSortFields.includes(sortField) ? sortField : 'candidate_id';
     const safeSortOrder = allowedSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toLowerCase() : 'asc';
 
-    const whereClause = filter
-    ? Prisma.sql`WHERE (candidate.full_name LIKE ${'%' + filter + '%'} 
+    let whereClause = Prisma.empty;
+    let conditions : any[] = [];
+    if (filter) {
+      conditions.push(Prisma.sql`WHERE (candidate.full_name LIKE ${'%' + filter + '%'} 
       OR candidate.key_skills LIKE ${'%' + filter + '%'}
-      OR candidate.city LIKE ${'%' + filter + '%'})`
-    : Prisma.empty;
+      OR candidate.city LIKE ${'%' + filter + '%'})`);
+    }
+
+    if (isMyCompany !== undefined && isMyCompany !== 'false') {
+      conditions.push(Prisma.sql`candidate.owner = ${user.user_id}`);
+    }
+
+    if (isHotCompany !== undefined && isHotCompany !== 'false') {
+      conditions.push(Prisma.sql`candidate.is_hot = 1`);
+    }
+
+    // Combine all conditions using AND
+    if (conditions.length > 0) {
+      whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, ` AND `)}`;
+    }
 
     const data = await this.prisma.$queryRaw<
       Array<{
@@ -107,6 +124,7 @@ export class CandidatesService {
     const [{ total }] = await this.prisma.$queryRaw<{ total: number }[]>(Prisma.sql`
       SELECT COUNT(*) AS total
       FROM candidate
+      ${whereClause}
     `);
 
     data.forEach(item => {
@@ -333,5 +351,22 @@ export class CandidatesService {
     return {
       data,
     }
+  }
+
+  async findCandidateToExport() {
+    const data = await this.prisma.candidate.findMany({
+      include:{
+        owner_user : {
+          select: {
+            name: true
+          }
+        }
+      }
+    });
+
+    return data.map(item => ({
+      ...item,
+      owner_name: item.owner_user ? item.owner_user.name : ''
+    }));
   }
 }

@@ -84,9 +84,7 @@ export class DashboardService {
 
   async findRecentHire() {
     const user = this.request.user;
-    
     const whereClause = Prisma.empty;
-  
 
     const data = await this.prisma.$queryRaw<Array<any>
       >(Prisma.sql`
@@ -147,5 +145,54 @@ export class DashboardService {
     return {
       data
     }
+  }
+
+  async findHiringOverview() {
+    const user = this.request.user;
+    const whereClause = Prisma.empty;
+
+    const statusValues = [CONSTANTS.PIPELINE_STATUS_SUBMITTED, CONSTANTS.PIPELINE_STATUS_INTERVIEWING, CONSTANTS.PIPELINE_STATUS_PLACED];
+    const statusConditions = statusValues.map(status => `
+      SUM(IF(candidate_joborder_status_history.status_to = ${status} AND DATE(candidate_joborder_status_history.date) = CURDATE(), 1, 0)) AS status_${status}_today,
+      SUM(IF(candidate_joborder_status_history.status_to = ${status} AND DATE(candidate_joborder_status_history.date) = DATE_SUB(CURDATE(), INTERVAL 1 DAY), 1, 0)) AS status_${status}_yesterday,
+      SUM(IF(candidate_joborder_status_history.status_to = ${status} AND YEARWEEK(candidate_joborder_status_history.date, 1) = YEARWEEK(CURDATE(), 1), 1, 0)) AS status_${status}_this_week,
+      SUM(IF(candidate_joborder_status_history.status_to = ${status} AND YEARWEEK(candidate_joborder_status_history.date, 1) = YEARWEEK(DATE_SUB(CURDATE(), INTERVAL 7 DAY), 1), 1, 0)) AS status_${status}_last_week,
+      SUM(IF(candidate_joborder_status_history.status_to = ${status}, 1, 0)) AS status_${status}_all_time
+    `).join(', ');
+
+    const data = await this.prisma.$queryRaw<Array<any>
+    >(Prisma.sql`
+      SELECT
+        ${Prisma.raw(statusConditions)}
+      FROM
+        candidate_joborder_status_history
+      ${whereClause}
+    `);
+
+    return {
+      data: this.formatStatusData(data[0])
+    }
+  }
+
+  formatStatusData(data: Record<string, string>) {
+    const timePeriods = ['today', 'yesterday', 'this_week', 'last_week', 'all_time'];
+    const statusLabels: Record<string, string> = {
+      "400": "submitted",
+      "500": "interviewing",
+      "800": "placed"
+    };
+    const groupedData: Record<string, Record<string, number>> = {};
+
+    Object.keys(statusLabels).forEach((statusCode) => {
+      const statusLabel = statusLabels[statusCode];
+      groupedData[statusLabel] = {};
+
+      timePeriods.forEach((period) => {
+        const key = `status_${statusCode}_${period}`;
+        groupedData[statusLabel][period] = parseInt(data[key], 10);
+      });
+    });
+
+    return groupedData;
   }
 }

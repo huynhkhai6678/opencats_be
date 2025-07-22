@@ -58,6 +58,5 @@ export class CreateContactDto {
     notes : string;
 
     @IsOptional()
-    @IsString()
     company_department_id : number;
 }

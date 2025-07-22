@@ -3,13 +3,17 @@ import { CreateListDto } from './dto/create-list.dto';
 import { UpdateListDto } from './dto/update-list.dto';
 import { REQUEST } from '@nestjs/core';
 import { PrismaService } from '../prisma/prisma.service';
-import { Prisma } from 'generated/prisma';
+import { contact, Prisma, saved_list } from 'generated/prisma';
+import { generateEmailFooter } from 'src/utils/email-util';
+import { SendEmailDto } from './dto/send-email.dto';
+import { KafkaDelayService } from '../services/kafka-delay.service';
+import { CONSTANTS } from 'src/constants';
 
 @Injectable()
 export class ListsService {
-
   constructor(
     private readonly prisma: PrismaService,
+    private readonly delayService: KafkaDelayService,
     @Inject(REQUEST) private readonly request: any,
   ) {}
 
@@ -226,5 +230,196 @@ export class ListsService {
     return {
       data : list
     };
+  }
+
+  async findMarketingEmailToEmployee(saveList: saved_list) {
+    const entries = await this.prisma.saved_list.findMany({
+      where: {
+        data_item_type: CONSTANTS.DATA_ITEM_CONTACT,
+      },
+    });
+
+    const email = await this.prisma.email_template.findFirst({
+      where: {
+        tag : 'EMAIL_TEMPLATE_MARKETING_TO_EMPLOYEE'
+      }
+    });
+
+    if (!email) {
+      throw new NotFoundException('Email template not existed');
+    }
+
+    const candidates = await this.findCandidateByList(saveList.saved_list_id);
+    const baseUrl = "https://dtalent.dev/quote.html";
+    let candidateContent = '';
+    let i = 1;
+    for (const candidate of candidates) {
+      candidateContent += `<hr style='color:red'/>`;
+      candidateContent += `<H1>Candidate ${i}</H1><b>Title</b>: ${candidate.job_title}<br/>`;
+      candidateContent += `<b>Experience: </b>${candidate.exp_years}<br/>`;
+      candidateContent += `<b>Summary: </b>${candidate.notes}<br/>`;
+      candidateContent += `<h2><a href='${baseUrl}'>CONTACT US</a></h2>`;
+      i++;
+    }
+
+    const previewContent = `${email.text?.replace('%CANDIDATE_LIST%', candidateContent)} ${generateEmailFooter()}`;
+    return { 
+      data : {
+        description: saveList.description,
+        list_id: null,
+        email_subject: email?.title || '',
+        email_body: previewContent,
+      },
+      entries,
+    };
+  }
+
+  async findMarketingEmailToCandidate(saveList: saved_list) {
+    const entries = await this.prisma.saved_list.findMany({
+      where: {
+        data_item_type: CONSTANTS.DATA_ITEM_CANDIDATE,
+      },
+    });
+
+    const email = await this.prisma.email_template.findFirst({
+      where: {
+        tag : 'EMAIL_TEMPLATE_MARKETING_TO_CANDIDATE'
+      }
+    });
+
+    if (!email) {
+      throw new NotFoundException('Email template not existed');
+    }
+
+    const joborders = await this.findJoborderByList(saveList.saved_list_id);
+    const baseUrl = "https://dtalent.dev/jobs/job-details/";
+    let jobContent = '';
+    let i = 1;
+    for (const joborder of joborders) {
+      const jobTitle = joborder.title.replace(/ /g, '-');
+      const jobUrl = `${baseUrl}${joborder.joborder_id}-${jobTitle.replace(/&/g, '')}`;
+      jobContent += `<hr style='color:red'/>`;
+      jobContent += `<H1>${joborder.companyName}</H1><H2>${joborder.title}</H2>`;
+      jobContent += `<b>Location: </b>${joborder.city}<br/><b>Salary: </b>${joborder.salary}<br/>`;
+      jobContent += `<h2><a href='${jobUrl}'>JOB DESCRIPTION</a></h2>`;
+      i++;
+    }
+
+    const previewContent = `${email.text?.replace('%JOB_LIST%', jobContent)} ${generateEmailFooter()}`;
+    return { 
+      data : {
+        description: saveList.description,
+        list_id: null,
+        email_subject: email?.title || '',
+        email_body: previewContent,
+      },
+      entries,
+    };
+  }
+
+  async findEmailData(id: number, type: string) {
+    const data = await this.prisma.saved_list.findFirst({
+      where: {
+        saved_list_id: id,
+      },
+    });
+
+    if (!data) {
+      throw new NotFoundException('This List not existed');
+    }
+
+    let response: any = {};
+    if (type === 'employee') {
+      response = await this.findMarketingEmailToEmployee(data);
+    }
+
+    if (type === 'candidate') {
+      response = await this.findMarketingEmailToCandidate(data);
+    }
+
+    return response;
+  }
+
+  async sendEmail(sendEmailDto: SendEmailDto) {
+    const data = await this.prisma.saved_list.findFirst({
+      where: {
+        saved_list_id: sendEmailDto.list_id,
+      }
+    })
+    
+    if (!data) {
+      throw new NotFoundException('This List not existed');
+    }
+
+    if (sendEmailDto.type === 'employee') {
+      const contacts = await this.findContactByList(sendEmailDto.list_id);
+      for (const contact of contacts) {
+        const emailBody = sendEmailDto.email_body.replace('%USERNAME%', `${contact.first_name} ${contact.last_name}`);
+        await this.delayService.sendEmail({
+          to: contact.email1,
+          subject: sendEmailDto.email_subject,
+          html: emailBody,
+        });
+      }
+    } else if (sendEmailDto.type === 'candidate') {
+      const candidates = await this.findCandidateByList(sendEmailDto.list_id);
+      for (const candidate of candidates) {
+        const emailBody = sendEmailDto.email_body.replace('%USERNAME%', `${candidate.first_name} ${candidate.last_name}`);
+        await this.delayService.sendEmail({
+          to: candidate.email1,
+          subject: sendEmailDto.email_subject,
+          html: emailBody,
+        });
+      }
+    }
+
+    return {
+      message: 'Email sent successfully',
+    }
+  }
+
+  async findCandidateByList(id: number) {
+    return await this.prisma.$queryRaw<
+      Array<any>
+    >(Prisma.sql`
+      SELECT
+        candidate.*
+      FROM candidate
+      INNER JOIN saved_list_entry 
+        ON saved_list_entry.data_item_id=candidate.candidate_id
+      WHERE saved_list_entry.saved_list_id=${id} 
+      AND saved_list_entry.data_item_type=100;
+    `);
+  }
+
+  async findContactByList(id: number) {
+    return await this.prisma.$queryRaw<
+      Array<any>
+    >(Prisma.sql`
+      SELECT
+        contact.*
+      FROM contact
+      INNER JOIN saved_list_entry 
+        ON saved_list_entry.data_item_id=contact.contact_id
+      WHERE saved_list_entry.saved_list_id=${id} 
+      AND saved_list_entry.data_item_type=300;
+    `);
+  }
+
+  async findJoborderByList(id: number) {
+    return await this.prisma.$queryRaw<
+      Array<any>
+    >(Prisma.sql`
+      SELECT
+        joborder.*,
+        company.name AS companyName
+      FROM joborder
+      INNER JOIN company 
+        ON joborder.company_id=company.company_id 
+      INNER JOIN saved_list_entry 
+        ON saved_list_entry.data_item_id=joborder.joborder_id
+      WHERE saved_list_entry.saved_list_id=${id} 
+      AND saved_list_entry.data_item_type=400;
+    `);
   }
 }

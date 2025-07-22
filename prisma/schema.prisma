@@ -426,7 +426,7 @@ model contact {
   @@index([site_id], map: "IDX_site_id")
 
   companies       company[]             @relation("BillingContact")
-  company         company               @relation("CompanyContacts", fields: [company_id], references: [company_id])
+  company         company?              @relation("CompanyContacts", fields: [company_id], references: [company_id])
   department      company_department?   @relation("CompanyDepartments", fields: [company_department_id], references: [company_department_id])
   owner_user      user?                 @relation("ContactOwnerUser", fields: [owner], references: [user_id])
 

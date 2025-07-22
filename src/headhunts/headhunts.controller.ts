@@ -17,6 +17,11 @@ export class HeadhuntsController {
     return this.headhuntsService.findAll(query);
   }
 
+  @Get('kpi')
+  findKpi(@Query('month') month : number) {
+    return this.headhuntsService.findKpi(month);
+  }
+
   @Get(':id/detail')
   findOne(@Param('id', ParseIntPipe) id: string) {
     return this.headhuntsService.findOne(+id);
