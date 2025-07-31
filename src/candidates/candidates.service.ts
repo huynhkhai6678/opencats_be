@@ -8,6 +8,7 @@ import { CandidateSourceService } from '../services/candidate-source.service';
 import { AttachmentsService } from '../attachments/attachments.service';
 import { CONSTANTS } from '../constants';
 import * as md5 from 'md5';
+import { CONTAINS } from 'class-validator';
 
 @Injectable()
 export class CandidatesService {
@@ -337,6 +338,17 @@ export class CandidatesService {
 
     return {
       data,
+    }
+  }
+
+  async findCandidateCalendar(id: number) {
+    return {
+      data : await this.prisma.calendar_event.findMany({
+        where : {
+          data_item_type : CONSTANTS.DATA_ITEM_CANDIDATE,
+          data_item_id : id
+        }
+      })
     }
   }
 

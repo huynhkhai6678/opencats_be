@@ -14,7 +14,6 @@ export class ActivitiesService {
   ) {}
 
   async create(createActivityDto: CreateActivityDto) {
-    console.log(createActivityDto);
     const user = this.request.user;
     return await this.prisma.activity.create({
       data : {

@@ -3,14 +3,17 @@ import { Injectable } from '@nestjs/common';
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { PDFDocument, rgb } from 'pdf-lib';
+import { Logger } from './logger.service';
 
 
 @Injectable()
 export class PdfRedactionService {
+  constructor (private readonly logger : Logger) {}
 
-  async redactSensitiveInfo(inputBuffer: Buffer, outputPath: string): Promise<void> {
+  async redactSensitiveInfo(inputPath: string, outputPath: string, attachment : any) {
 
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.js');
+    const inputBuffer = await fs.readFile(inputPath);
 
     // Step 1: Load PDF with pdfjs
     const loadingTask = pdfjsLib.getDocument({ data: inputBuffer });
@@ -25,26 +28,36 @@ export class PdfRedactionService {
       const content = await page.getTextContent();
       const pdfLibPage = pages[pageIndex];
 
+      const lines: Record<number, { str: string; x: number; y: number; fontSize: number }[]> = {};
+      // Group text have same Y into 1 line
       for (const item of content.items) {
-        const str = (item as any).str as string;
-        const transform = (item as any).transform as number[];
-
+        const { str, transform } = item as any;
         const x = transform[4];
-        const y = transform[5];
-        const fontSize = transform[0]; // Approx font size from transform
+        const y = Math.floor(transform[5]);
+        const fontSize = transform[0];
 
-        // Match sensitive info: email or phone (you can add more)
-        if (this.isSensitive(str)) {
-          const redactWidth = str.length * (fontSize * 0.6); // rough width estimate
-          const redactHeight = fontSize + 2;
+        if (!lines[y]) lines[y] = [];
+        lines[y].push({ str, x, y, fontSize });
+      }
 
-          pdfLibPage.drawRectangle({
-            x,
-            y,
-            width: redactWidth,
-            height: redactHeight,
-            color: rgb(0, 0, 0),
-          });
+       for (const [lineY, items] of Object.entries(lines)) {
+        const sorted = items.sort((a, b) => a.x - b.x);
+        const fullLineText = sorted.map(i => i.str).join('').trim();
+
+        if (this.isSensitive(fullLineText)) {
+          // Redact all items that belong to the sensitive line
+          for (const { str, x, y, fontSize } of sorted) {
+            const redactWidth = str.length * (fontSize * 0.6);
+            const redactHeight = fontSize + 2;
+
+            pdfLibPage.drawRectangle({
+              x,
+              y,
+              width: redactWidth,
+              height: redactHeight,
+              color: rgb(0, 0, 0),
+            });
+          }
         }
       }
     }
@@ -53,13 +66,63 @@ export class PdfRedactionService {
     const outputDir = path.dirname(outputPath);
     await fs.mkdir(outputDir, { recursive: true });
     await fs.writeFile(outputPath, outputBytes);
+
+    const file = {
+      filename: `redacted_${attachment.stored_filename}`,
+      originalname: attachment.original_filename,
+      encoding: 'utf-8',
+      title: attachment.title,
+      mimetype: attachment.content_type,
+      destination: attachment.directory_name,
+      buffer: Buffer.from(outputBytes), 
+      size: outputBytes.length,
+      path: outputPath
+    };
+
+    return file;
   }
 
-  private isSensitive(text: string): boolean {
+  isSensitive(text: string): boolean {
+    text = text.trim();
+    let isNameFound = false;
+    let isEmailFound = false;
+    let isAddressFound = false;
     const emailRegex = /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}\b/;
-    const phoneRegex = /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/;
-    const vietnameseNameRegex = /\b(Nguyen|Tran|Le|Pham|Huynh|Dang|Hoang|Do|Vo|Bui)\b/i;
+    const phoneRegex = /(?:\+84|84|0)\s?(?:\d{3})\s?\d{3}\s?\d{3}\b/;
+    const vietnameseNameRegex = /\b(nguyen|tran|le|pham|hoang|huynh|phan|vu|vo|dang|bui|do|ho|ngo|duong|ly|doan)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/i;
+    const vietnameseNameRegex2 = /\b(nguyễn|trần|lê|phạm|hoàng|huỳnh|phan|vũ|võ|đặng|bùi|đỗ|hồ|ngô|dương|lý|đoàn)\s+(?:[A-ZÀ-Ỵ][a-zà-ỹ]+(?:\s+|$)){1,3}/u;
+    const vietnameseUpperNameRegex = /\b(HUỲNH|NGUYỄN|TRẦN|LÊ|PHẠM|HOÀNG|PHAN|VŨ|VÕ|ĐẶNG|BÙI|ĐỖ|HỒ|NGÔ|DƯƠNG|LÝ|ĐOÀN)\s+([A-ZÀ-Ỹ]{1,2}\s+)?([A-ZÀ-Ỹ]+\s*){1,3}\b/;
 
-    return emailRegex.test(text) || phoneRegex.test(text) || vietnameseNameRegex.test(text);
+    if (!isEmailFound && emailRegex.test(text)) {
+      this.logger.log('Email detected: ' + text);
+      isEmailFound = true;
+      return true;
+    }
+
+    if (!isAddressFound && phoneRegex.test(text)) {
+      this.logger.log('Phone number detected: ' + text);
+      isAddressFound = true;
+      return true;
+    }
+
+    if (!isNameFound && vietnameseNameRegex.test(text)) {
+      this.logger.log('Vietnamese name detected: ' + text);
+      isNameFound = true;
+      return true;
+    }
+
+    if (!isNameFound && vietnameseNameRegex2.test(text)) {
+      this.logger.log('Vietnamese 2 name detected: ' + text);
+      isNameFound = true;
+      return true;
+    }
+
+    if (!isNameFound && vietnameseUpperNameRegex.test(text)) {
+      this.logger.log('Vietnamese UPPERCASE name detected: ' + text);
+      isNameFound = true;
+      return true;
+    }
+
+    return false;
   }
 }

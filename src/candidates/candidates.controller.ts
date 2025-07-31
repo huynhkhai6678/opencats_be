@@ -105,6 +105,11 @@ export class CandidatesController {
     return this.candidatesService.findCandidateActivities(+id);
   }
 
+  @Get(':id/calendars')
+  findCandidateCalendar(@Param('id', ParseIntPipe) id: string) {
+    return this.candidatesService.findCandidateCalendar(+id);
+  }
+
   @Patch(':id')
   update(@Param('id', ParseIntPipe) id: string, @Body(ValidationPipe) updateCandidateDto: UpdateCandidateDto) {
     return this.candidatesService.update(+id, updateCandidateDto);

@@ -326,33 +326,75 @@ export class JobOrdersService {
   }
 
   async findJobOrderPipeline(id: number) {
-    const data = await this.prisma.candidate_joborder.findMany({
-      where : {
-        joborder_id: id
-      },
-      select: {
-        candidate_joborder_id : true,
-        candidate_confirm_status: true,
-        rating_value: true,
-        date_created: true,
-        status_info : {
-          select : {
-            short_description: true
-          }
-        },
-        candidate: {
-          select: {
-            full_name: true,
-            date_created: true,
-            entered_user: {
-              select: {
-                name: true
-              }
-            }
-          }
-        },
-      }
-    });
+    const data = await this.prisma.$queryRaw<
+      Array<any>
+    >(Prisma.sql`
+      SELECT
+        candidate.candidate_id,
+        candidate.first_name,
+        candidate.last_name,
+        candidate.full_name,
+        candidate.state,
+        candidate.email1,
+        candidate_joborder.status AS status,
+        candidate_joborder.candidate_confirm_status,
+        candidate_joborder.date_created,
+        candidate_joborder_status.short_description AS status_description,
+        candidate_joborder.candidate_joborder_id AS candidate_joborder_id,
+        candidate_joborder.rating_value AS rating_value,
+        owner_user.first_name AS owner_first_name,
+        owner_user.last_name AS owner_last_name,
+        external_users.name as headhunt_name,
+        external_users.id as headhunt_id,
+        candidate.source_type as source_type,
+        (
+          SELECT
+            CONCAT(
+              '<strong>',
+              DATE_FORMAT(activity.date_created, '%d/%m/%Y'),
+              ' (',
+              entered_by_user.first_name,
+              ' ',
+              entered_by_user.last_name,
+              '):</strong> ',
+              IF(
+                ISNULL(activity.notes) OR activity.notes = '',
+                '(No Notes)',
+                activity.notes
+              )
+            )
+          FROM
+            activity
+          LEFT JOIN activity_type
+            ON activity.type = activity_type.activity_type_id
+          LEFT JOIN user AS entered_by_user
+            ON activity.entered_by = entered_by_user.user_id
+          WHERE
+            activity.data_item_id = candidate.candidate_id
+          AND activity.data_item_type = 100
+          AND activity.joborder_id = ${id}
+          ORDER BY activity.date_created DESC
+          LIMIT 1
+        ) AS last_activity
+      FROM
+        candidate_joborder
+      LEFT JOIN candidate
+        ON candidate_joborder.candidate_id = candidate.candidate_id
+      LEFT JOIN external_users
+        ON candidate.entered_by = external_users.id
+      LEFT JOIN user AS owner_user
+        ON candidate.owner = owner_user.user_id
+      LEFT JOIN user AS added_user
+        ON candidate_joborder.added_by = added_user.user_id
+      LEFT JOIN attachment
+        ON candidate.candidate_id = attachment.data_item_id
+      LEFT JOIN candidate_joborder_status
+        ON candidate_joborder.status = candidate_joborder_status.candidate_joborder_status_id
+      WHERE
+        candidate_joborder.joborder_id = ${id}
+      GROUP BY
+        candidate_joborder.candidate_id
+    `);
 
     return {
       data

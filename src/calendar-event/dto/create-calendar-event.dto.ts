@@ -32,4 +32,12 @@ export class CreateCalendarEventDto {
     @IsOptional()
     @IsString()
     time: string;
+
+    @IsDefined()
+    @IsNumber()
+    data_item_id: number;
+
+    @IsDefined()
+    @IsNumber()
+    data_item_type: number;
 }

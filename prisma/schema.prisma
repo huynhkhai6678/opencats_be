@@ -75,12 +75,15 @@ model attachment {
   md5_sum           String   @default("") @db.VarChar(40)
   file_size_kb      Int?     @default(0)
   md5_sum_text      String   @default("") @db.VarChar(40)
+  redacted_id       Int?      
 
   @@index([md5_sum], map: "IDX_CANDIDATE_MD5_SUM")
   @@index([data_item_id], map: "IDX_data_item_id")
   @@index([site_id, file_size_kb], map: "IDX_site_file_size")
   @@index([site_id, file_size_kb, date_created], map: "IDX_site_file_size_created")
   @@index([data_item_type, data_item_id], map: "IDX_type_id")
+
+  joborder          joborder?       @relation("AttachmentJoborderRelation", fields: [data_item_id], references: [joborder_id])
 }
 
 model calendar_event {
@@ -163,7 +166,7 @@ model candidate {
   exp_years             Int      @default(1)
   desired_pay_1         Float    @default(0.00) @db.Float
   desired_work_location String?  @db.VarChar(255)
-  source_type           Boolean  @default(false)
+  source_type           Int      @default(0)
   owner_delete          Boolean  @default(false)
   internal_comment      String?  @db.Text
   language              String?  @db.VarChar(255)
@@ -216,9 +219,9 @@ model candidate_joborder {
   @@index([site_id, joborder_id], map: "IDX_site_joborder")
   @@index([site_id, status], map: "IDX_status_special")
 
-  candidate             candidate?             @relation("CandidateToJobOrders", fields: [candidate_id], references: [candidate_id])
-  joborder              joborder?              @relation("JobOrderToCandidateJobOrders", fields: [joborder_id], references: [joborder_id])
-  status_info           candidate_joborder_status? @relation("CandidateJobOrderStatusRelation", fields: [status], references: [candidate_joborder_status_id])
+  candidate             candidate?                  @relation("CandidateToJobOrders", fields: [candidate_id], references: [candidate_id])
+  joborder              joborder?                   @relation("JobOrderToCandidateJobOrders", fields: [joborder_id], references: [joborder_id])
+  status_info           candidate_joborder_status?  @relation("CandidateJobOrderStatusRelation", fields: [status], references: [candidate_joborder_status_id])
 }
 
 model candidate_joborder_status {
@@ -522,7 +525,7 @@ model external_user_profile {
 
 model external_users {
   id            Int     @id @default(autoincrement())
-  type          Boolean
+  type          Int
   email         String  @db.VarChar(255)
   phone         String  @db.VarChar(255)
   verified      Boolean @default(true)
@@ -708,7 +711,8 @@ model joborder {
   owner_user            user?                 @relation("JobOrderOwnerUser", fields: [owner], references: [user_id])
   recruiter_user        user?                 @relation("JobOrderRecruiterUser", fields: [recruiter], references: [user_id])
   candidate_joborders   candidate_joborder[]  @relation("JobOrderToCandidateJobOrders")
-  activity              activity[]            @relation("ActivitJoborrderRelation")
+  activities            activity[]            @relation("ActivitJoborrderRelation")
+  attachments           attachment[]          @relation("AttachmentJoborderRelation")
 }
 
 model joborder_favorite {
@@ -970,6 +974,14 @@ model user_login {
   @@index([site_id, date], map: "IDX_site_id_date")
   @@index([successful, site_id], map: "IDX_successful_site_id")
   @@index([user_id], map: "IDX_user_id")
+}
+
+model user_review {
+  id  Int        @id @default(autoincrement())
+  content        String
+  site_id        Int       @default(0)
+  user_name      String    @db.VarChar(80)
+  company_name   String    @db.VarChar(80)
 }
 
 model word_verification {

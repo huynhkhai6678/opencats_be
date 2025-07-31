@@ -1,7 +1,6 @@
 import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, UseInterceptors, UploadedFile, ValidationPipe, BadRequestException, ParseIntPipe, NotFoundException, Res } from '@nestjs/common';
 import { AttachmentsService } from './attachments.service';
 import { CreateAttachmentDto } from './dto/create-attachment.dto';
-import { UpdateAttachmentDto } from './dto/update-attachment.dto';
 import { SetAttachmentIdInterceptor } from '../interceptors/set-attachment-id.interceptor';
 import { AuthGuard } from '../guards/auth.guard';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -9,10 +8,14 @@ import { createFileUploadStorage } from '../utils/upload-file.util';
 import { Response } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
+import { KafkaProducerService } from '../services/kafka-producer.service';
 
 @Controller('attachments')
 export class AttachmentsController {
-  constructor(private readonly attachmentsService: AttachmentsService) {}
+  constructor(
+    private readonly attachmentsService: AttachmentsService,
+    private readonly kafkaService: KafkaProducerService,
+  ) {}
 
   @Post()
   @UseGuards(AuthGuard)
@@ -22,14 +25,21 @@ export class AttachmentsController {
       storage: createFileUploadStorage('attachments'),
     }),
   )
-  create(
+  async create(
     @UploadedFile() file: Express.Multer.File,
     @Body(ValidationPipe) createAttachmentDto: CreateAttachmentDto
   ) {
     if (!file) {
       throw new BadRequestException('File is required');
     }
-    return this.attachmentsService.create(createAttachmentDto.data_item_id, createAttachmentDto.data_type_id,file);
+    const attachemnt = await this.attachmentsService.create(createAttachmentDto.data_item_id, createAttachmentDto.data_type_id,file);
+    if (createAttachmentDto.create_redacted) {
+      this.kafkaService.sendMessage('create_redact_attachment', attachemnt);
+    }
+
+    return {
+      message: 'Upload attachment successfully'
+    }
   }
 
   @Get(':id/:hash')

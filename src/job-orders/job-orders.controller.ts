@@ -85,7 +85,7 @@ export class JobOrdersController {
     return this.jobOrdersService.findJobOrderPipeline(+id);
   }
 
-  @Get('companies/:id')
+  @Get(':id/companies')
   findCompanyJobOrder(@Param('id', ParseIntPipe) id: string) {
     return this.jobOrdersService.findCompanyJobOrder(+id);
   }

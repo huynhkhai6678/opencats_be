@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { PdfModule } from './pdf/pdf.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { CompaniesModule } from './companies/companies.module';
@@ -28,7 +27,9 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { KafkaDelayService } from './services/kafka-delay.service';
 import { HeadhuntsModule } from './headhunts/headhunts.module';
 import { ReportsModule } from './reports/reports.module';
-import * as fs from 'fs';
+import { ExternalApiModule } from './external-api/external-api.module';
+import { PdfRedactionService } from './services/pdf-redaction.service';
+import { Logger } from './services/logger.service';
 
 @Module({
   imports: [
@@ -63,7 +64,6 @@ import * as fs from 'fs';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    PdfModule,
     PrismaModule,
     AuthModule,
     CompaniesModule,
@@ -82,9 +82,10 @@ import * as fs from 'fs';
     CalendarEventModule,
     DashboardModule,
     HeadhuntsModule,
-    ReportsModule
+    ReportsModule,
+    ExternalApiModule
   ],
   controllers: [AppController],
-  providers: [AppService, KafkaProducerService, KafkaDelayService],
+  providers: [AppService, KafkaProducerService, KafkaDelayService, PdfRedactionService, Logger],
 })
 export class AppModule {}

@@ -4,9 +4,13 @@ import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { Logger } from './services/logger.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  // const logger = app.get(Logger);
+  // app.useLogger(logger);
 
   app.enableCors();
 

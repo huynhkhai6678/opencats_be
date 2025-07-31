@@ -33,6 +33,8 @@ export class CalendarEventService {
         public: createCalendarEventDto.public ? 1 : 0,
         title: createCalendarEventDto.title,
         type: createCalendarEventDto.type,
+        data_item_id : createCalendarEventDto.data_item_id,
+        data_item_type: createCalendarEventDto.data_item_type,
         site_id: 1,
         entered_by: user.user_id,
         date_created: new Date(),

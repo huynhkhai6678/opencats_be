@@ -1,5 +1,5 @@
 import { Transform } from "class-transformer";
-import { IsDefined, IsNumber } from "class-validator";
+import { IsBoolean, IsDefined, IsNumber } from "class-validator";
 
 export class CreateAttachmentDto {
     @IsDefined()
@@ -11,4 +11,7 @@ export class CreateAttachmentDto {
     @Transform(({ value }) => value === '' ? undefined : Number(value))
     @IsNumber()
     data_type_id : number;
+
+    @IsDefined()
+    create_redacted : boolean;
 }

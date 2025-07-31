@@ -13,9 +13,11 @@ export class AttachmentsService {
       @Inject(REQUEST) private readonly request: any,
   ) {}
 
-  async create(dataItemId : number, dataItemType: number, file: Express.Multer.File) {
+  async create(dataItemId : number, dataItemType: number, file: any, redactedId = null) {
     const nameWithoutExtension = path.parse(file.originalname).name;
-    const directoryName = file.destination.replace(/^uploads\//, '');
+    const directoryName = file.destination
+    .replace(/^uploads[\\/]/, '')
+    .replace(/\\/g, '/');
     const md5sum = await this.computeFileMD5(file.path);
 
     return await this.prisma.attachment.create({
@@ -31,6 +33,7 @@ export class AttachmentsService {
         directory_name: `${directoryName}/`,
         file_size_kb: (file.size / 1024),
         md5_sum: md5sum,
+        redacted_id : redactedId
       }
     });
   }
@@ -69,6 +72,21 @@ export class AttachmentsService {
         attachment_id: id
       },
     });
+
+    const attachmentDedact = await this.prisma.attachment.findFirst({
+      where: {
+        redacted_id: id,
+      },
+    });
+
+    if (attachmentDedact) {
+      await this.deleteFile(attachmentDedact.stored_filename, attachmentDedact.directory_name ?? '');
+      await this.prisma.attachment.delete({
+        where: {
+          attachment_id: attachmentDedact.attachment_id
+        },
+      });
+    }
 
     return {
       message : `Delete attachment successfully`

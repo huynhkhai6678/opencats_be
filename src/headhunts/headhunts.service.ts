@@ -227,6 +227,21 @@ export class HeadhuntsService {
     };
   }
 
+  async getKpiQuery(month : number) {
+    const user = this.request.user;
+    const kpi = await this.getKpis(user, month);
+    const totalScore = kpi.offered * 50 + kpi.submitted * 0.5 + kpi.interviewing * 0.5 + kpi.client_declined * 4 + kpi.contract * 10;
+    return {
+      data : {
+        ...kpi,
+        total_score: totalScore,
+        target: 100
+      },
+      code: 0,
+      message: 'Request Success'
+    }
+  }
+
   update(id: number, updateHeadhuntDto: UpdateHeadhuntDto) {
     return `This action updates a #${id} headhunt`;
   }

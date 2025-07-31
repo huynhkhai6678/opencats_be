@@ -45,7 +45,7 @@ export function createFileUploadStorage(entity: string) {
   });
 }
 
-function getUniqueDirectory(basePath: string, extraData = ''): string {
+export function getUniqueDirectory(basePath: string, extraData = ''): string {
   if (!basePath.endsWith('/')) {
     basePath += '/';
   }
