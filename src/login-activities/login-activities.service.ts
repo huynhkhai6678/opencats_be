@@ -13,6 +13,7 @@ export class LoginActivitiesService {
       sortField = 'saved_list_id',
       sortOrder = 'asc',
       filter,
+      successful
     } = query;
       
     const page = Number(query.page) || 0;
@@ -28,9 +29,20 @@ export class LoginActivitiesService {
     const safeSortField = allowedSortFields.includes(sortField) ? sortField : 'user_login.date';
     const safeSortOrder = allowedSortOrders.includes(sortOrder.toLowerCase()) ? sortOrder.toLowerCase() : 'asc';
 
-    const whereClause = filter
-    ? Prisma.sql` WHERE (user_login.ip LIKE ${'%' + filter + '%'})`
-    : Prisma.empty;
+    let whereClause = Prisma.empty;
+    let conditions : any[] = [];
+    if (filter) {
+      conditions.push(Prisma.sql`WHERE (user_login.ip LIKE ${'%' + filter + '%'}`);
+    }
+
+    if (successful !== undefined) {
+      conditions.push(Prisma.sql`user_login.successful = ${successful}`);
+    }
+
+    // Combine all conditions using AND
+    if (conditions.length > 0) {
+      whereClause = Prisma.sql`WHERE ${Prisma.join(conditions, ` AND `)}`;
+    }
 
     const data = await this.prisma.$queryRaw<
       Array<any>
@@ -53,13 +65,5 @@ export class LoginActivitiesService {
     `);
     
     return { data, total: Number(total) };
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} loginActivity`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} loginActivity`;
   }
 }

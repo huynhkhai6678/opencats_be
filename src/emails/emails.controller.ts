@@ -2,8 +2,9 @@ import { Controller, Get, Body, Patch, Param, Delete, Query, ParseIntPipe, UseGu
 import { EmailsService } from './emails.service';
 import { AuthGuard } from '../guards/auth.guard';
 import { UpdateEmailDto } from './dto/update-email.dto';
+import { AdminGuard } from '../guards/admin.guard';
 
-@UseGuards(AuthGuard)
+@UseGuards(AuthGuard, AdminGuard)
 @Controller('emails')
 export class EmailsController {
   constructor(private readonly emailsService: EmailsService) {}

@@ -1,8 +1,11 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseIntPipe, ParseBoolPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, ParseIntPipe, ParseBoolPipe, UseGuards } from '@nestjs/common';
 import { HeadhuntsService } from './headhunts.service';
 import { CreateHeadhuntDto } from './dto/create-headhunt.dto';
 import { UpdateHeadhuntDto } from './dto/update-headhunt.dto';
+import { AuthGuard } from '../guards/auth.guard';
+import { AdminGuard } from '../guards/admin.guard';
 
+@UseGuards(AuthGuard, AdminGuard)
 @Controller('headhunts')
 export class HeadhuntsController {
   constructor(private readonly headhuntsService: HeadhuntsService) {}

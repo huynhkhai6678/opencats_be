@@ -392,8 +392,6 @@ export class JobOrdersService {
         ON candidate_joborder.status = candidate_joborder_status.candidate_joborder_status_id
       WHERE
         candidate_joborder.joborder_id = ${id}
-      GROUP BY
-        candidate_joborder.candidate_id
     `);
 
     return {

@@ -8,9 +8,19 @@ import { Logger } from './logger.service';
 
 @Injectable()
 export class PdfRedactionService {
+  private isNameFound = false;
+  private isEmailFound = false;
+  private isPhoneFound = false;
+  private isAddressFound = false;
+
   constructor (private readonly logger : Logger) {}
 
   async redactSensitiveInfo(inputPath: string, outputPath: string, attachment : any) {
+
+    this.isNameFound = false;
+    this.isEmailFound = false;
+    this.isPhoneFound = false;
+    this.isAddressFound = false;
 
     const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf.js');
     const inputBuffer = await fs.readFile(inputPath);
@@ -40,9 +50,12 @@ export class PdfRedactionService {
         lines[y].push({ str, x, y, fontSize });
       }
 
-       for (const [lineY, items] of Object.entries(lines)) {
+      const sortedLineEntries = Object.entries(lines).sort((a, b) => Number(b[0]) - Number(a[0]));
+
+      for (const [lineY, items] of sortedLineEntries) {
         const sorted = items.sort((a, b) => a.x - b.x);
         const fullLineText = sorted.map(i => i.str).join('').trim();
+        this.logger.log(fullLineText);
 
         if (this.isSensitive(fullLineText)) {
           // Redact all items that belong to the sensitive line
@@ -84,44 +97,35 @@ export class PdfRedactionService {
 
   isSensitive(text: string): boolean {
     text = text.trim();
-    let isNameFound = false;
-    let isEmailFound = false;
-    let isAddressFound = false;
     const emailRegex = /\b[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-z]{2,}\b/;
-    const phoneRegex = /(?:\+84|84|0)\s?(?:\d{3})\s?\d{3}\s?\d{3}\b/;
-    const vietnameseNameRegex = /\b(nguyen|tran|le|pham|hoang|huynh|phan|vu|vo|dang|bui|do|ho|ngo|duong|ly|doan)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*/i;
-    const vietnameseNameRegex2 = /\b(nguyễn|trần|lê|phạm|hoàng|huỳnh|phan|vũ|võ|đặng|bùi|đỗ|hồ|ngô|dương|lý|đoàn)\s+(?:[A-ZÀ-Ỵ][a-zà-ỹ]+(?:\s+|$)){1,3}/u;
-    const vietnameseUpperNameRegex = /\b(HUỲNH|NGUYỄN|TRẦN|LÊ|PHẠM|HOÀNG|PHAN|VŨ|VÕ|ĐẶNG|BÙI|ĐỖ|HỒ|NGÔ|DƯƠNG|LÝ|ĐOÀN)\s+([A-ZÀ-Ỹ]{1,2}\s+)?([A-ZÀ-Ỹ]+\s*){1,3}\b/;
+    const phoneRegex = /(?:\+84|84|0)\s?(?:\d\s?){9,11}\b/;
 
-    if (!isEmailFound && emailRegex.test(text)) {
+    const vietnameseNameRegex = /\b(nguyễn|trần|lê|phạm|hoàng|huỳnh|phan|vũ|võ|đặng|bùi|đỗ|hồ|ngô|dương|lý|đoàn)\b/i;
+    // const vietnamAddressRegex = /\b(?<!\d{4}\s*-\s*)(\d{1,3}(?:\/\d{1,3})?\s*(?:đường|duong|st|đ|d|d\.|đ\.)?\s*[\w\s\-\/]+(?:,\s*(?:phường|p\.?|phuong)?\s*[\w\s\-\/]+)?(?:,\s*(?:quận|q\.?|quan)?\s*[\w\s\-\/]+)?(?:,\s*(?:thành phố|tp\.?|city)?\s*[\w\s\-\/]+)?(?:,\s*(?:việt nam|vietnam))?)/giu;
+
+    if (!this.isEmailFound && emailRegex.test(text)) {
       this.logger.log('Email detected: ' + text);
-      isEmailFound = true;
+      this.isEmailFound = true;
       return true;
     }
 
-    if (!isAddressFound && phoneRegex.test(text)) {
+    if (!this.isPhoneFound && phoneRegex.test(text)) {
       this.logger.log('Phone number detected: ' + text);
-      isAddressFound = true;
+      this.isAddressFound = true;
       return true;
     }
 
-    if (!isNameFound && vietnameseNameRegex.test(text)) {
+    if (!this.isNameFound && vietnameseNameRegex.test(text)) {
       this.logger.log('Vietnamese name detected: ' + text);
-      isNameFound = true;
+      this.isNameFound = true;
       return true;
     }
 
-    if (!isNameFound && vietnameseNameRegex2.test(text)) {
-      this.logger.log('Vietnamese 2 name detected: ' + text);
-      isNameFound = true;
-      return true;
-    }
-
-    if (!isNameFound && vietnameseUpperNameRegex.test(text)) {
-      this.logger.log('Vietnamese UPPERCASE name detected: ' + text);
-      isNameFound = true;
-      return true;
-    }
+    // if (!this.isAddressFound && vietnamAddressRegex.test(text)) {
+    //   this.logger.log('Address name detected: ' + text);
+    //   this.isAddressFound = true;
+    //   return true;
+    // }
 
     return false;
   }
